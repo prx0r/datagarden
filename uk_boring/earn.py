@@ -182,7 +182,8 @@ def find_earn_opportunities(profile: CapabilityEnvelope) -> list:
 def _find_jobs(profile: CapabilityEnvelope, freshness: dict) -> list:
     """Find local jobs matching skills from canonical store.
     
-    Uses Jev to classify relevance instead of simple keyword matching.
+    Strategy: keyword pre-filter → Jev classifies top candidates only.
+    Don't call Jev on every observation (too slow). Pre-filter, then Jev the top 20.
     """
     opportunities = []
 
@@ -190,31 +191,34 @@ def _find_jobs(profile: CapabilityEnvelope, freshness: dict) -> list:
         from core.normalize import load_observations
         observations = load_observations('ukopportunity', source='planning_data_api', limit=500)
 
+        # Step 1: Keyword pre-filter (fast, no API calls)
+        candidates = []
         for obs in observations:
+            value = obs.get('value', {})
+            desc = value.get('description', '')
+            if not desc:
+                continue
+            desc_lower = desc.lower()
+            if any(skill.lower() in desc_lower for skill in profile.skills):
+                candidates.append(obs)
+
+        # Step 2: Jev classifies only top 20 candidates (fast, ~20s)
+        for obs in candidates[:20]:
             value = obs.get('value', {})
             desc = value.get('description', '')
             ref = value.get('reference', '')
             obs_id = obs.get('observation_id', '')
 
-            if not desc:
-                continue
-
-            # Use Jev to classify relevance
             jev_result = _classify_opportunity(desc, profile.skills)
-            
             relevance = jev_result.get('relevance', {})
             score = relevance.get('score', 0) if isinstance(relevance, dict) else 0
-            
             actionable = jev_result.get('actionable', {})
             is_actionable = actionable.get('noul', False) if isinstance(actionable, dict) else False
-            
             value_choice = jev_result.get('estimated_value', {})
             value_label = value_choice.get('choice', 'medium') if isinstance(value_choice, dict) else 'medium'
-            
             value_map = {'low': 100, 'medium': 300, 'high': 750, 'very_high': 2000}
             estimated_value = value_map.get(value_label, 300)
-            
-            # Only include if Jev says it's relevant
+
             if score >= 5 and is_actionable:
                 opportunities.append(Opportunity(
                     action='CONTACT_DEVELOPER',
