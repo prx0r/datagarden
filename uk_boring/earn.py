@@ -6,14 +6,102 @@ to make money from right now?"
 Input: capability envelope (skills, location, time, capital, equipment)
 Output: grounded actions with estimated value, confidence, requirements
 
-All routes cite specific canonical observations as evidence.
+Jev is wired in here to classify whether a planning application or contract
+is relevant to a specific skill. This is the core semantic compression step.
 """
 
 import json
+import os
+import requests
 from datetime import datetime, date
 from pathlib import Path
 from typing import Optional
 from dataclasses import dataclass, field
+
+
+OR_KEY = None
+
+def _get_or_key():
+    global OR_KEY
+    if OR_KEY:
+        return OR_KEY
+    try:
+        OR_KEY = open(os.path.expanduser('~/.agentvault/openrouter_key.txt')).read().strip()
+    except Exception:
+        OR_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+    return OR_KEY
+
+
+def _jev_classify(state: dict, questions: dict) -> dict:
+    """Call Jev via OpenRouter to classify something."""
+    key = _get_or_key()
+    if not key:
+        return {}
+    
+    payload = {
+        'model': 'typesafe/jev-1.13',
+        'state': json.dumps(state),
+        'questions': questions,
+    }
+    
+    try:
+        resp = requests.post(
+            'https://openrouter.ai/api/alpha/decisions',
+            headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
+            json=payload,
+            timeout=15,
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            return data.get('answers', {})
+    except Exception:
+        pass
+    return {}
+
+
+def _classify_opportunity(description: str, skills: list) -> dict:
+    """Use Jev to classify whether an opportunity matches a person's skills."""
+    state = {
+        'opportunity': {
+            'description': description,
+        },
+        'person': {
+            'skills': skills,
+        }
+    }
+    
+    questions = {
+        'relevance': {
+            'type': 'score',
+            'instructions': 'How relevant is this opportunity to the persons skills?',
+            'criteria': ['not relevant', 'slightly relevant', 'moderately relevant', 'very relevant', 'perfect match'],
+        },
+        'actionable': {
+            'type': 'noul',
+            'instructions': 'Could a person with these skills actually do this work?',
+        },
+        'estimated_value': {
+            'type': 'choice',
+            'instructions': 'What is the approximate value of this opportunity?',
+            'criteria': {
+                'low': 'Under 100 GBP',
+                'medium': '100-500 GBP',
+                'high': '500-2000 GBP',
+                'very_high': 'Over 2000 GBP',
+            }
+        },
+        'urgency': {
+            'type': 'choice',
+            'instructions': 'How urgent is this opportunity?',
+            'criteria': {
+                'immediate': 'This week',
+                'soon': 'This month',
+                'flexible': 'No rush',
+            }
+        }
+    }
+    
+    return _jev_classify(state, questions)
 
 
 @dataclass
@@ -92,7 +180,10 @@ def find_earn_opportunities(profile: CapabilityEnvelope) -> list:
 
 
 def _find_jobs(profile: CapabilityEnvelope, freshness: dict) -> list:
-    """Find local jobs matching skills from canonical store."""
+    """Find local jobs matching skills from canonical store.
+    
+    Uses Jev to classify relevance instead of simple keyword matching.
+    """
     opportunities = []
 
     try:
@@ -101,24 +192,43 @@ def _find_jobs(profile: CapabilityEnvelope, freshness: dict) -> list:
 
         for obs in observations:
             value = obs.get('value', {})
-            desc = value.get('description', '').lower()
+            desc = value.get('description', '')
             ref = value.get('reference', '')
             obs_id = obs.get('observation_id', '')
 
-            if _matches_skills_text(desc, profile):
+            if not desc:
+                continue
+
+            # Use Jev to classify relevance
+            jev_result = _classify_opportunity(desc, profile.skills)
+            
+            relevance = jev_result.get('relevance', {})
+            score = relevance.get('score', 0) if isinstance(relevance, dict) else 0
+            
+            actionable = jev_result.get('actionable', {})
+            is_actionable = actionable.get('noul', False) if isinstance(actionable, dict) else False
+            
+            value_choice = jev_result.get('estimated_value', {})
+            value_label = value_choice.get('choice', 'medium') if isinstance(value_choice, dict) else 'medium'
+            
+            value_map = {'low': 100, 'medium': 300, 'high': 750, 'very_high': 2000}
+            estimated_value = value_map.get(value_label, 300)
+            
+            # Only include if Jev says it's relevant
+            if score >= 5 and is_actionable:
                 opportunities.append(Opportunity(
                     action='CONTACT_DEVELOPER',
-                    title=f"Work for: {value.get('description', '')[:60]}",
+                    title=f"Work for: {desc[:60]}",
                     description=f"Planning application {ref} may need work",
-                    estimated_value_gbp=500,
-                    confidence=0.4,
-                    source='planning_data_canonical',
-                    evidence=[value.get('description', '')],
+                    estimated_value_gbp=estimated_value,
+                    confidence=score / 10.0,
+                    source='planning_data_jev',
+                    evidence=[desc[:200]],
                     provenance=[obs_id],
                     freshness=_freshness_for_source(obs.get('source_id', ''), freshness),
                 ))
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  Error in _find_jobs: {e}")
 
     return opportunities[:5]
 
