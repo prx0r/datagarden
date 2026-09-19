@@ -5,3 +5,7 @@ venv/
 forests/*/data/historical/
 data/nber/
 .agentvault/
+data/nber/
+forests/*/data/
+canonical/
+logs/
