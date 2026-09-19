@@ -1,5 +1,5 @@
 """
-PowPowPow — Daily Merkle Manifest
+DataGarden — Daily Merkle Manifest
 
 At the end of each day, generate a manifest:
 - raw object count
@@ -19,8 +19,8 @@ import os
 from datetime import datetime, date
 from typing import Dict, List, Optional
 
-MANIFEST_DIR = '/home/box/powpowpow/warehouse/manifests'
-WAREHOUSE_DIR = '/home/box/powpowpow/warehouse'
+MANIFEST_DIR = '/home/box/datagarden/canonical/manifests'
+WAREHOUSE_DIR = '/home/box/datagarden/canonical'
 
 
 def _hash_file(filepath: str) -> str:
@@ -212,13 +212,34 @@ def list_manifests() -> List[Dict]:
 
 
 def verify_manifest_integrity(manifest_date: str) -> bool:
-    """Verify that current warehouse state matches a stored manifest."""
+    """Verify that current warehouse state matches a stored manifest.
+
+    Read-only: computes a fresh Merkle root from the warehouse and compares
+    it against the stored manifest, without writing anything.
+    """
     manifest = get_manifest(manifest_date)
     if not manifest:
         return False
 
-    current = generate_manifest(manifest_date)
-    return current['merkle_root'] == manifest['merkle_root']
+    # Compute current Merkle root (read-only)
+    file_hashes = []
+    total_files = 0
+
+    for root, dirs, files in os.walk(WAREHOUSE_DIR):
+        if 'manifests' in root or '__pycache__' in root:
+            continue
+        for f in sorted(files):
+            if f.endswith(('.json', '.jsonl')):
+                fp = os.path.join(root, f)
+                try:
+                    file_hash = _hash_file(fp)
+                    file_hashes.append(file_hash)
+                    total_files += 1
+                except Exception:
+                    pass
+
+    current_root = _merkle_root(file_hashes)
+    return current_root == manifest['merkle_root']
 
 
 if __name__ == '__main__':

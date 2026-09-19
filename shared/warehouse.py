@@ -1,5 +1,5 @@
 """
-PowPowPow — Warehouse Layer
+DataGarden — Warehouse Layer
 
 Two-class storage architecture:
   canonical_backfill  — reconstructable truth, backfill when needed
@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-WAREHOUSE_DIR = '/home/box/powpowpow/warehouse'
+WAREHOUSE_DIR = '/home/box/datagarden/canonical'
 
 # --- Directory structure ---
 

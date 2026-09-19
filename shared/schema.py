@@ -1,9 +1,12 @@
 """
-PowPowPow — Universal Chain Schema
+DataGarden — Universal Schema
 Normalized schema for all chain data regardless of source.
 
 Bitemporal: every record carries observed_at and valid_from for
 point-in-time correctness in backtests.
+
+NOTE: These are the PowPowPow-specific types from the original implementation.
+The new core/ module has the garden-agnostic types.
 """
 
 from dataclasses import dataclass, field
@@ -21,7 +24,7 @@ RECOVERABILITY = {
 @dataclass
 class BitemporalMixin:
     """Bitemporal metadata for point-in-time correctness."""
-    observed_at: str  # when PowPowPow observed this
+    observed_at: str  # when observed
     valid_from: str   # when this was true in the real world
     valid_to: Optional[str] = None  # when this stopped being true
     recoverability: str = 'unknown'  # RECOVERABILITY key

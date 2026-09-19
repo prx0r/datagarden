@@ -1,5 +1,5 @@
 """
-PowPowPow — Permanent Entity Registry
+DataGarden — Permanent Entity Registry
 
 CRSP-style stable identifiers for everything.
 Never let ticker, pool name, exchange symbol, GPU SKU, or wallet label
@@ -23,7 +23,7 @@ import os
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-ENTITIES_DIR = '/home/box/powpowpow/warehouse/knowledge/entities'
+ENTITIES_DIR = '/home/box/datagarden/canonical/entities'
 
 # Entity categories
 CATEGORIES = {
