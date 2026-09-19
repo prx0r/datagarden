@@ -1,0 +1,33 @@
+{
+  "experiment_id": "powpowpow-resource-flow-001",
+  "forest": "powpowpow",
+  "tree": "resource_flow",
+  "audience": "crypto miners, GPU owners, hardware enthusiasts",
+  "title": "Where should your GPU be working right now",
+  "title_hypothesis": "Miners want to maximize revenue per unit of resource. Current profitability data can answer this directly.",
+  "answer_metric": "relative_profitability",
+  "answer_value": 1,
+  "confidence": 0.8,
+  "evidence": [
+    "GPU mining profitability varies significantly across networks",
+    "Electricity cost is the key variable most miners undercount",
+    "Some networks pay 3x more per unit of compute than others"
+  ],
+  "video_id": "/home/box/datagarden/content/shorts/short_20260919_050623.mp4",
+  "published_at": null,
+  "platform": "youtube_shorts",
+  "impressions": null,
+  "ctr": null,
+  "views": null,
+  "avg_view_duration": null,
+  "avg_view_percentage": null,
+  "likes": null,
+  "comments": null,
+  "shares": null,
+  "subs_gained": null,
+  "decision": null,
+  "next_hypothesis": null,
+  "created_at": "2026-09-19T05:06:23.623970",
+  "data_source": "powpowpow_seesaw",
+  "data_collected_at": "2026-09-19T05:06:23.623943"
+}

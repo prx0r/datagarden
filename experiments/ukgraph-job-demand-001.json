@@ -1,0 +1,33 @@
+{
+  "experiment_id": "ukgraph-job-demand-001",
+  "forest": "room",
+  "tree": "job_demand",
+  "audience": "career switchers, UK workers 18-35",
+  "title": "The UK jobs where demand is rising fastest",
+  "title_hypothesis": "Career-switching viewers care about direction of demand more than static salary rankings. Rising demand = opportunity.",
+  "answer_metric": "demand_trend",
+  "answer_value": 1,
+  "confidence": 0.75,
+  "evidence": [
+    "ONS data shows healthcare and tech roles consistently growing",
+    "Nursing, software development, and data analysis lead demand growth",
+    "Electrician demand rising in most UK regions"
+  ],
+  "video_id": "/home/box/datagarden/content/shorts/short_20260919_050601.mp4",
+  "published_at": null,
+  "platform": "youtube_shorts",
+  "impressions": null,
+  "ctr": null,
+  "views": null,
+  "avg_view_duration": null,
+  "avg_view_percentage": null,
+  "likes": null,
+  "comments": null,
+  "shares": null,
+  "subs_gained": null,
+  "decision": null,
+  "next_hypothesis": null,
+  "created_at": "2026-09-19T05:06:01.194071",
+  "data_source": "ons_labour_demand",
+  "data_collected_at": "2026-09-19T05:06:01.194026"
+}

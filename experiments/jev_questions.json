@@ -1,0 +1,185 @@
+{
+  "_meta": {
+    "description": "Reusable Jev question templates for the data garden loop. Import from shared/jev.py for runtime use.",
+    "source": "shared/jev.py",
+    "updated": "2026-09-19"
+  },
+
+  "breadup_observation": {
+    "category": {
+      "type": "choice",
+      "instructions": "What type of market signal is this observation?",
+      "criteria": {
+        "price_drop": "Item or category prices declining",
+        "price_spike": "Item or category prices increasing",
+        "supply_glut": "Inventory or listing volume surging",
+        "supply_squeeze": "Inventory drying up, items selling fast",
+        "new_listing": "New product or SKU appeared on market",
+        "discontinued": "Product discontinued or hard to find",
+        "arbitrage": "Price gap between platforms or conditions",
+        "condition_shift": "Average condition of sold items changing"
+      }
+    },
+    "severity": {
+      "type": "score",
+      "instructions": "How significant is this price movement for someone trying to flip this item?",
+      "criteria": ["trivial", "minor", "moderate", "significant", "extreme"]
+    },
+    "actionable": {
+      "type": "noul",
+      "instructions": "Could someone act on this signal today and make money?"
+    },
+    "audience": {
+      "type": "choice",
+      "instructions": "Who would care most about this?",
+      "criteria": {
+        "reseller": "Buys and resells for profit",
+        "hobbyist": "Consumer looking for deals",
+        "collector": "Seeks rare or specific items",
+        "trader": "Active in high-frequency buying/selling",
+        "general": "Broad appeal, anyone interested in deals"
+      }
+    }
+  },
+
+  "ukgraph_observation": {
+    "category": {
+      "type": "choice",
+      "instructions": "What type of UK economic signal is this?",
+      "criteria": {
+        "regulation": "New law, policy, or compliance requirement",
+        "job_shift": "Employment rising or falling in a sector",
+        "wage_signal": "Salary data changing meaningfully",
+        "skill_gap": "Demand for workers outpacing supply",
+        "crowding": "Too many people entering a field",
+        "automation": "Technology replacing or augmenting jobs",
+        "demographic": "Population or migration pattern shift",
+        "infrastructure": "Physical investment or capacity change"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How time-sensitive is this for career decision-making?",
+      "criteria": ["low", "moderate", "high", "critical"]
+    },
+    "audience": {
+      "type": "choice",
+      "instructions": "Which audience segment should see this first?",
+      "criteria": {
+        "career_switcher": "Considering changing jobs or industries",
+        "student": "Choosing education or first job",
+        "tradesperson": "Electrician, plumber, builder, etc.",
+        "professional": "Office/knowledge worker",
+        "founder": "Business owner or startup founder",
+        "investor": "Looking at economic trends"
+      }
+    },
+    "content_value": {
+      "type": "noul",
+      "instructions": "Is this signal specific enough and surprising enough to make a good 30-second video?"
+    }
+  },
+
+  "powpowpow_observation": {
+    "category": {
+      "type": "choice",
+      "instructions": "What type of proof-of-work signal is this?",
+      "criteria": {
+        "difficulty_change": "Network difficulty adjusted",
+        "price_move": "Coin price changed significantly",
+        "hashrate_shift": "Hashrate rising or falling",
+        "hardware_news": "New mining hardware or efficiency change",
+        "energy_shift": "Electricity cost or availability changed",
+        "pool_migration": "Miners moving between pools",
+        "regulation": "Mining policy or legal change",
+        "protocol_change": "Block reward, algorithm, or emission change"
+      }
+    },
+    "severity": {
+      "type": "score",
+      "instructions": "How much does this affect miner profitability right now?",
+      "criteria": ["negligible", "minor", "moderate", "severe", "existential"]
+    },
+    "actionable": {
+      "type": "noul",
+      "instructions": "Should a miner change their setup or strategy based on this?"
+    },
+    "network": {
+      "type": "choice",
+      "instructions": "Which network does this primarily affect?",
+      "criteria": {
+        "bitcoin": "Bitcoin",
+        "qubic": "Qubic",
+        "monero": "Monero",
+        "ethash": "Ethereum Classic or Ethash coins",
+        "kawpow": "Ravennium or KawPow coins",
+        "other": "Other proof-of-work network"
+      }
+    }
+  },
+
+  "hypothesis_scoring": {
+    "specific_audience": {
+      "type": "noul",
+      "instructions": "Does this title target a specific, identifiable group of people rather than everyone?"
+    },
+    "novel_signal": {
+      "type": "noul",
+      "instructions": "Does this present information that is hard to find or not widely known?"
+    },
+    "answerable_from_data": {
+      "type": "noul",
+      "instructions": "Can we actually support this claim with data we have collected or can collect?"
+    },
+    "economic_consequence": {
+      "type": "score",
+      "instructions": "How directly does this affect someone's financial decisions?",
+      "criteria": ["none", "entertaining", "interesting", "useful", "urgent"]
+    },
+    "publish_candidate": {
+      "type": "noul",
+      "instructions": "Should we actually make a video about this? Consider: is it specific, true, surprising, and useful?"
+    }
+  },
+
+  "audience_response": {
+    "segment": {
+      "type": "choice",
+      "instructions": "Based on the comments and engagement, which audience segment responded strongest?",
+      "criteria": {
+        "reseller": "People interested in buying/selling for profit",
+        "career_switcher": "People considering job changes",
+        "hobbyist": "People doing it for personal interest",
+        "investor": "People looking at trends to invest",
+        "student": "People learning or choosing education",
+        "general": "Broad, no specific segment dominates"
+      }
+    },
+    "sentiment": {
+      "type": "choice",
+      "instructions": "What is the dominant audience sentiment in comments?",
+      "criteria": {
+        "positive_engaged": "Actively interested, asking questions",
+        "positive_casual": "Liked it but not deeply engaged",
+        "mixed": "Some positive, some skeptical",
+        "negative": "Mostly disagreement or criticism",
+        "confused": "Audience didn't understand the point"
+      }
+    },
+    "repeatable": {
+      "type": "noul",
+      "instructions": "Does the engagement pattern suggest we should make more content like this?"
+    },
+    "next_action": {
+      "type": "choice",
+      "instructions": "What should we do next based on this response?",
+      "criteria": {
+        "deepen": "Make a longer or more detailed follow-up",
+        "pivot": "Try a different angle on the same topic",
+        "series": "This is a recurring format, keep going",
+        "prune": "The audience didn't care, move on",
+        "explore": "This audience revealed an adjacent topic we should investigate"
+      }
+    }
+  }
+}

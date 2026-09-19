@@ -1,0 +1,11 @@
+{
+  "AB12 CDE": {
+    "registration": "AB12 CDE",
+    "mot_expiry": null,
+    "tax_expiry": null,
+    "v5c_received": null,
+    "last_check": "2026-09-19",
+    "recalls_acknowledged": [],
+    "reminders_set": []
+  }
+}
