@@ -6,6 +6,9 @@ from .source import Source
 from .derived import DerivedFact
 from .capability import CapabilityResult, ActionClass
 from .outcome import Outcome, OutcomeStatus
+from .hardware import HardwareEconomics
+from .valuation import BreadupValuation
+from .workflow import Workflow, WorkflowStep
 from .storage import (
     store_observation,
     store_observation_batch,
@@ -22,6 +25,10 @@ __all__ = [
     "DerivedFact",
     "CapabilityResult",
     "Outcome",
+    "HardwareEconomics",
+    "BreadupValuation",
+    "Workflow",
+    "WorkflowStep",
     # Enums
     "TruthClass",
     "Recoverability",
