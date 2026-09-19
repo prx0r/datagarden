@@ -202,6 +202,27 @@ TOOLS = [
             "required": ["location", "skills"]
         }
     },
+    {
+        "name": "list_painful_tasks",
+        "description": "List the most annoying UK government tasks by complaint volume. Returns DVLA, council tax, parking, used car, energy disputes.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "category": {"type": "string", "description": "Filter: driving, council, parking, consumer, energy"}
+            }
+        }
+    },
+    {
+        "name": "get_painful_task",
+        "description": "Get detailed workflow for a specific painful task (steps, receipt pattern, failure modes).",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "Task ID (e.g. 'dvla.renew_licence', 'parking.pcn_appeal')"}
+            },
+            "required": ["task_id"]
+        }
+    },
 ]
 
 
@@ -431,6 +452,44 @@ def earn(location: str, skills: list, certifications: list = None,
     }
 
 
+def list_painful_tasks(category: str = None) -> dict:
+    from uk_boring.workflows.painful_tasks import PAINFUL_TASKS, list_painful_tasks as lpt
+    tasks = lpt(category)
+    return {
+        "status": "ok",
+        "count": len(tasks),
+        "tasks": [{
+            "task_id": k,
+            "name": v.name,
+            "volume": v.volume,
+            "category": v.category,
+            "url": v.url,
+            "cost": v.cost,
+            "timeline": v.timeline,
+        } for k, v in PAINFUL_TASKS.items() if not category or v.category == category],
+    }
+
+
+def get_painful_task(task_id: str) -> dict:
+    from uk_boring.workflows.painful_tasks import get_painful_task as gpt
+    task = gpt(task_id)
+    if not task:
+        return {"status": "not_found", "task_id": task_id}
+    return {
+        "status": "ok",
+        "task_id": task_id,
+        "name": task.name,
+        "volume": task.volume,
+        "category": task.category,
+        "url": task.url,
+        "cost": task.cost,
+        "timeline": task.timeline,
+        "steps": task.steps,
+        "receipt_pattern": task.receipt_pattern,
+        "failure_modes": task.failure_modes,
+    }
+
+
 def achieve_goal(goal_id: str, context: dict = None) -> dict:
     from uk_boring.goals import get_goal
     context = context or {}
@@ -539,6 +598,8 @@ DISPATCH = {
     "verify_receipt": verify_receipt,
     "list_national_workflows": list_national_workflows,
     "earn": earn,
+    "list_painful_tasks": list_painful_tasks,
+    "get_painful_task": get_painful_task,
     "achieve_goal": achieve_goal,
     "list_goals": list_goals,
     "get_opportunities": get_opportunities,
