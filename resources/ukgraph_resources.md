@@ -9,6 +9,12 @@
 | Workforce Jobs (JOBS01/02) | ONS | Part of LMS | Jobs by industry, public/private |
 | Vacancies by Industry | ONS | Part of LMS | Job vacancies by sector |
 | ASHE Table 15 | [ONS](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/regionbyoccupation4digitsoc2010ashetable15) | Multiple ZIP (83MB each) | Earnings by SOC × Region (downloaded 2021-2024) |
+| ASHE Table 14 | [ONS](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/occupationbyregion4digitsoc2010ashetable14) | Multiple ZIP | Earnings by Occupation × Region |
+| ASHE Table 2 | [ONS](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/occupationby2digitsocashetable2) | Multiple ZIP | Earnings by 2-digit SOC |
+| ASHE Table 3 | [ONS](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/regionbyoccupation2digitsocashetable3) | Multiple ZIP | Earnings by Region × 2-digit SOC |
+| ASHE Table 5 | [ONS](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/ukregionbyindustry2digitsicashetable5) | Multiple ZIP | Earnings by Region × Industry |
+| ASHE Table 29 | [ONS](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/earningsandhoursworkedbyindustryandoccupationashetable29) | Multiple ZIP (13.6MB) | Earnings by Industry × Occupation |
+| EARN06: Gross weekly earnings by occupation | [ONS](https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/grossweeklyearningsbyoccupationearn06) | 150KB XLS | Quarterly earnings by occupation |
 | UK Business: Activity, Size and Location | [ONS](https://www.ons.gov.uk/businessindustryandtrade/business/activitysizeandlocation/datasets/ukbusinessactivitysizeandlocation) | Multiple XLS | 2.7M+ businesses by SIC, region, size |
 | Claimant Count | [NOMIS](https://www.nomisweb.co.uk/) | Monthly API | Most timely local labour signal |
 
@@ -31,6 +37,9 @@
 | UK Housing (Cleaned) | [Kaggle](https://www.kaggle.com/datasets/burhanimtengwa/uk-housing-cleaned) | 262MB | Cleaned, region-enriched, ML-ready 2000-2023 |
 | UK Property Prices with Sale History | [Kaggle](https://www.kaggle.com/datasets/isaacoresanya/uk-property-prices-with-sale-history) | Multi-MB | Rightmove + Land Registry combined |
 | UK Property Price data 1995-2023 | [Kaggle](https://www.kaggle.com/datasets/willianoliveiragibin/uk-property-price-data-1995-2023-04) | Multi-MB | Full Land Registry history |
+| GOV.UK Job Listing Data | [Kaggle](https://www.kaggle.com/datasets/mohammedderouiche/gov-uk-job-listing-data) | Multi-MB | UK government job portal listings |
+| Employee Salary Dataset | [Kaggle](https://www.kaggle.com/datasets/anninasimon/employee-salary-dataset) | CSV | Employee salary with demographics |
+| UK House Price Prediction 2015-2024 | [Kaggle](https://www.kaggle.com/datasets/swarupsudulaganti/uk-house-price-prediction-dataset-2015-to-2024) | 3MB | ML-ready house price data |
 
 ## Other Sources
 

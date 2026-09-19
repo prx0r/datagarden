@@ -37,16 +37,27 @@
 | Tool | URL | What it unlocks |
 |------|-----|-----------------|
 | cunicopia-dev/ebay-mcp | [GitHub](https://github.com/cunicopia-dev/ebay-mcp) | MCP: ebay_price_check, ebay_search, ebay_get_item |
-| BlackFalconData-org/ebay-sold-listings-scraper | [GitHub](https://github.com/BlackFalconData-org/ebay-sold-listings-scraper) | Structured eBay sold data at scale |
+| BlackFalconData-org/ebay-sold-listings-scraper | [GitHub](https://github.com/BlackFalconData-org/ebay-sold-listings-scraper) | Structured eBay sold data at scale, 32 fields |
+| crawloop/eBay-Sold-Listings-Scraper | [GitHub](https://github.com/crawloop/eBay-Sold-Listings-Scraper-Completed-Sales-Sold-Prices) | 20+ marketplaces, raw JSON for resale arbitrage |
+| raphael-cohen/ebay_auction_price_predict | [GitHub](https://github.com/raphael-cohen/ebay_auction_price_predict) | eBay auction price prediction (300K records) |
+| azizadeboye/Data-Science-datasets | [GitHub](https://github.com/azizadeboye/Data-Science-datasets) | eBayAuctions.csv for statistics courses |
 
-## Other Sources
+## More Apify Actors
+
+| Actor | URL | What it unlocks |
+|-------|-----|-----------------|
+| junipr/ebay-sold-listings | [Apify](https://apify.com/junipr/ebay-sold-listings) | Completed prices, condition, sellers, shipping |
+| xtracto/ebay-sold-comps-scraper | [Apify](https://apify.com/xtracto/ebay-sold-comps-scraper) | Price band: min/median/p90 per query |
+| khadinakbar/ebay-sold-comps-analytics | [Apify](https://apify.com/khadinakbar/ebay-sold-comps-analytics-scraper) | Analytics report: percentiles, velocity, trend |
+
+## Other Pricing Tools
 
 | Source | URL | What it unlocks |
 |--------|-----|-----------------|
-| ING eBay Sold Listings | [inglisting.com](https://inglisting.com/ebay-sold-listings-data/) | 897K aggregate stats (not raw) |
 | SoldComps API | [sold-comps.com](https://sold-comps.com/) | 40 sold comps per request, free tier |
 | PlottData eBay Intelligence | [plottdata.com](https://plottdata.com/marketplaces/ebay) | Resale pricing & seller analytics |
 | itemstoflip.com | [itemstoflip.com](https://itemstoflip.com/blog/ebay-flipping-profit-calculator) | Flipping profit calculator workflow |
+| Resellbot | [resellbot.com](https://resellbot.com/ebay-sold-listings/) | Free eBay + Poshmark + Mercari sold comps |
 
 ## Human Tasks
 

@@ -23,6 +23,9 @@
 | UK Planning API | [ukplanningapi.co.uk](https://ukplanningapi.co.uk/) | Planning applications as JSON/MCP, 500 req/month free |
 | Council Listener API | [council-api.arrakis.house](https://council-api.arrakis.house/api) | Council spending data, 39 councils, free |
 | DemocracyClub/LGSF | [GitHub](https://github.com/DemocracyClub/LGSF) | Local Government Scraper Framework for council data |
+| Gankdat UK Planning | [gankdat.com/stats/uk-planning](https://gankdat.com/stats/uk-planning) | 2K planning applications, normalized schema |
+| PlanIt | [planit.org.uk](https://www.planit.org.uk/) | 420 authorities, 20.6M applications, free API |
+| data.gov.uk Planning | [data.gov.uk](https://ckan.publishing.service.gov.uk/dataset/planning_applications) | National planning statistics |
 
 ## MCP Servers
 
