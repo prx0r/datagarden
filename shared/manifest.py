@@ -19,8 +19,8 @@ import os
 from datetime import datetime, date
 from typing import Dict, List, Optional
 
-MANIFEST_DIR = '/home/box/datagarden/canonical/manifests'
-WAREHOUSE_DIR = '/home/box/datagarden/canonical'
+MANIFEST_DIR = Path(__file__).parent.parent / 'canonical' / 'manifests'
+WAREHOUSE_DIR = Path(__file__).parent.parent / 'canonical'
 
 
 def _hash_file(filepath: str) -> str:

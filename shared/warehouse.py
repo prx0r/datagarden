@@ -26,7 +26,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
-WAREHOUSE_DIR = '/home/box/datagarden/canonical'
+WAREHOUSE_DIR = Path(__file__).parent.parent / 'canonical'
 
 # --- Directory structure ---
 

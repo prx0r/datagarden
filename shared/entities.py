@@ -23,7 +23,7 @@ import os
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-ENTITIES_DIR = '/home/box/datagarden/canonical/entities'
+ENTITIES_DIR = Path(__file__).parent.parent / 'canonical' / 'entities'
 
 # Entity categories
 CATEGORIES = {

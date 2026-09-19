@@ -1,244 +1,213 @@
-# Handover — What to do first
+# Handover — Next Agent
 
-## Where we are
+## What this repo is
 
-We have built the theory. Now we plant.
-
-Everything we've designed decomposes into **reusable functions** that compose into products. The architecture is:
+UKGraph: a continuously verified execution-and-opportunity graph for Britain. The economic router that matches what people CAN do to what the UK economy NEEDS right now.
 
 ```
-OBSERVE → DECIDE → CREATE → DISTRIBUTE → ENGAGE → LEARN → OBSERVE
+UKGRAPH = the whole datagarden
+├── UKBoring      "I am lazy" → do it for me
+├── UKOpportunity "I want money" → show me how
+└── UKProducts    "What's this worth?" → price it
 ```
 
----
-
-## What exists
-
-### Code (functional)
-- **powpowpow/** — Full Seesaw infrastructure: warehouse, schema, entities, backtests, collectors, content system. 15+ Python modules. Core is working.
-
-### Theory (complete)
-- **datagarden/** — 16 documents: thesis, ideology, moat, formula, filters, OS, content strategy, content map, seed data, frontier analysis, unified architecture
-
-### Products (designed)
-- **influence/** — Agentic business stack: cmail, stevejobless, 16 products designed. roast.pet pipeline proven end-to-end. Graph + dash + receipts live.
-
-### Missing (not built yet)
-- **Breadup collectors** — no live data
-- **UKGraph collectors** — no live data
-- **Shared infrastructure** — entities, warehouse, manifest not extracted from powpowpow
-- **Content pipeline** — no Shorts produced
-- **Analytics feedback loop** — not wired
-
----
-
-## The first loop (do this now)
-
-One tree per forest. One Short each. Nine probes total.
-
-### Week 1: Set up shared infrastructure
-
-**Extract from powpowpow:**
-```
-entities.py    → datagarden/shared/entities.py
-warehouse.py   → datagarden/shared/warehouse.py
-schema.py      → datagarden/shared/schema.py
-manifest.py    → datagarden/shared/manifest.py
-```
-
-**Create directory structure:**
-```
-datagarden/
-├── shared/
-├── forests/
-│   ├── breadup/gardens/
-│   ├── room/gardens/
-│   ├── me/gardens/
-│   └── powpowpow/
-├── experiments/
-└── content/
-```
-
-### Week 1: Start Breadup data collection
-
-**Cheapest path:**
-- Sign up for Apify ($100/mo)
-- Deploy eBay UK sold listings actor
-- Collect daily: 50 categories, sold price + condition + date
-- Store in `datagarden/forests/breadup/data/`
-- First metric: `median_sold_price` by category × platform
-
-**Second collector (free):**
-- Companies House streaming API (free, no key needed)
-- Start logging: company births/deaths by SIC + region
-- Store in `datagarden/forests/room/data/`
-
-### Week 1: Make 3 test Shorts
-
-Use existing data or public data. Just test the format.
-
-**Short 1 (Breadup):**
-Title: "What should you flip with £100?"
-Format: Answer in first 3 seconds, prove with data
-Length: 30-60 seconds
-
-**Short 2 (UKGraph):**
-Title: "The UK jobs getting crowded fastest"
-Format: Ranking in first 3 seconds, evidence after
-Length: 30-60 seconds
-
-**Short 3 (PowPowPow):**
-Title: "The most profitable compute hardware right now"
-Format: Answer first, data second
-Length: 30-60 seconds
-
-### Week 2: Publish and measure
-
-- Post all 3 Shorts
-- Record: CTR, retention, comments, saves
-- For each: was the hypothesis correct?
-- Decision: prune / keep / deepen
-
-### Week 2-3: Grow what works
-
-- If Breadup Short performs → add Vinted collector
-- If UKGraph Short performs → add ONS job adverts API
-- If PowPowPow Short performs → add more networks
-
-### Week 4: First content tree
-
-Pick the best-performing forest. Make 3 more Shorts in that branch. Start building the experiment log.
-
----
-
-## The experiment log
-
-Every tree logs:
-
-```text
-tree_id: breadup-mispricing-001
-forest: breadup
-child: mispricing
-audience: resellers, side-hustlers
-
-title: "Things people are selling too cheaply right now"
-hypothesis: People want arbitrage opportunities. Mispricing is actionable.
-expected: high CTR, high saves
-
-metric: sold_price / asking_price by category
-data: eBay UK sold (Apify)
-collected: 2026-09-19
-categories: 50
-
-published: 2026-09-22
-platform: YouTube Shorts
-
-results:
-  impressions: TBD
-  ctr: TBD
-  retention_3s: TBD
-  completion: TBD
-  comments: TBD
-  saves: TBD
-
-decision: TBD
-next_hypothesis: TBD
-```
-
----
-
-## Rules
-
-1. **No collector without a title.** Every data pipeline powers a specific piece of content.
-
-2. **No video without a measurement.** Every piece of content is backed by a metric we keep collecting.
-
-3. **Answer in first 3 seconds.** No suspense farming. Give the answer, then prove it.
-
-4. **Hypothesis before publish.** Predict performance. Learn from the gap.
-
-5. **Nine trees max.** 3 per forest. Don't overbuild.
-
-6. **Analytics drive growth.** Let YouTube tell us where to deepen.
-
-7. **Higher-order moats emerge later.** Don't design them now. Plant and grow.
-
----
-
-## Budget
-
-| Item | Cost |
-|------|------|
-| Apify (eBay sold) | $100/mo |
-| Companies House API | Free |
-| ONS API | Free |
-| YouTube (free to post) | Free |
-| Arrow 2 (charts) | Free tier |
-| **Total** | **~$100/mo** |
-
----
-
-## Success criteria (30 days)
-
-- [ ] 9 Shorts published
-- [ ] Experiment log with 9 entries
-- [ ] At least 1 Short with >5% CTR
-- [ ] At least 1 Short with >50% retention
-- [ ] Breadup: daily sold prices for 50 categories
-- [ UKGraph: Companies House streaming active
-- [ ] Decision on which forest to deepen
-
----
-
-## The one-page summary
+## The three principles
 
 ```
-WHAT: Plant 9 trees (3 per forest), publish 9 Shorts, measure what works.
-
-WHY: The loop is the moat. Analytics tell us where to grow.
-
-HOW:
-  1. Extract shared code from powpowpow
-  2. Set up eBay + Companies House collectors
-  3. Make 3 test Shorts (one per forest)
-  4. Publish and measure
-  5. Grow what works, prune what doesn't
-
-RULES:
-  - No collector without a title
-  - No video without a measurement
-  - Answer in first 3 seconds
-  - Hypothesis before publish
-  - Nine trees max
-
-BUDGET: $100/mo
-TIMELINE: 30 days to first data
+I AM LAZY    → UKBoring handles the admin
+I WANT MONEY → UKOpportunity shows how
+I AM AN IDIOT → dead simple, no learning required
 ```
 
----
+## The product
 
-## What we know
+> Given everything we know about you and everything we know about Britain, here is exactly what you should do next to make your life better.
 
-- The theory is sufficient
-- The architecture is clean
-- roast.pet proves the composition works
-- powpowpow proves the data pipeline works
-- influence proves the distribution + receipt system works
-- We don't need more theory
-- We need to plant
+## The core endpoint
 
-## What we don't know
+```python
+uk.earn(profile={
+    location: "Oldham",
+    skills: ["electrician"],
+    certifications: ["NICEIC"],
+    available_days: ["Thursday", "Saturday"],
+    capital: 500
+})
+# Returns: grounded actions with estimated value, confidence, route to action
+```
 
-- Which titles will perform
-- Which audiences will respond
-- Which forests deserve deeper collection
-- What higher-order products will emerge
-- What the audience will teach us
+## What exists (working)
 
-**That's why we plant. YouTube is the experiment. The audience grows the schema.**
+### MCP Servers (all import successfully)
 
----
+| Server | Tools | Status |
+|--------|-------|--------|
+| `mcp/breadup_mcp.py` | 11 | ✅ |
+| `mcp/ukgraph_mcp.py` | 12 | ✅ |
+| `mcp/powpowpow_mcp.py` | 12 | ✅ |
+| `mcp/council_mcp.py` | 13 | ✅ |
+| `mcp/uk_admin_mcp.py` | 24 | ✅ |
+| `mcp/uk_boring_mcp.py` | 14 | ✅ |
+| **Total** | **86** | |
 
-$$
-\boxed{\text{Plant now. Measure. Grow what works. Let the loop compound.}}
-$$
+### Core kernel
+
+`core/` — Observation, Entity, Source, DerivedFact, CapabilityResult, Outcome, HardwareEconomics, BreadupValuation, Workflow
+
+### UK Boring
+
+- Place system (UPRN → jurisdictions → services)
+- Geo resolver (postcodes.io, free)
+- 14 ontology types
+- Oldham prototype
+- Move-home workflow (7 steps, receipt verification)
+- 9 national primitives (DVLA, electoral, HMRC, vehicle tax)
+- Receipt verification engine (8 patterns)
+- Goal definitions (7 goals)
+- Opportunity signal processing
+- `uk.earn()` endpoint
+
+### Collectors
+
+- `collectors/planning_collector.py` — Planning Data API (free)
+- `collectors/contracts_collector.py` — Contracts Finder (free)
+- `collectors/ons_jobs.py` — ONS + GOV.UK
+- `collectors/uk_admin_collectors.py` — 36 curated tasks
+- `collectors/mot_history.py` — DVSA MOT History (needs API key)
+- `collectors/breadup_historical.py` — eBay/ING/Kaggle/NBER
+- `collectors/ukgraph_historical.py` — ASHE/Nomis/Land Registry
+- `collectors/powpowpow_historical.py` — CoinGecko/Minerstat
+
+### Tests
+
+26 tests passing (core, breadup, ukgraph, ukadmin, normalize)
+
+## What's broken (fix these first)
+
+### 1. Hardcoded paths to /home/box/powpowpow
+
+5 files reference this path. Won't work for anyone else.
+
+**Files:**
+- `mcp_server.py:658,694,721,757,789`
+- `mcp/powpowpow_mcp.py:32-33`
+- `capabilities/evaluate_hardware.py:19,49`
+- `collectors/powpowpow_historical.py:31,37`
+
+**Fix:** Either make PowPowPow an adapter that reads from its own repo, or copy the needed data into datagarden's canonical directory.
+
+### 2. shared/ files still PowPowPow-specific
+
+- `shared/warehouse.py` — hardcodes canonical path, subdirectories only know mining chains
+- `shared/entities.py` — all entities are PowPowPow-specific
+- `shared/schema.py` — mostly mining dataclasses
+
+**Fix:** These should be garden-agnostic or moved to PowPowPow-specific code.
+
+### 3. Naming chaos
+
+| Name | What it means |
+|------|---------------|
+| UKGraph | The whole datagarden (ukgraph_final.md) OR one garden (economy.md) |
+| Breadup | Physical goods garden = UKProducts |
+| UK Admin / Boring UK / UKBoring | The workflow garden |
+| ROOM / UKGraph / UKOpportunity | The economic opportunity garden |
+| ME / Margin Economics | Production economics (not implemented) |
+
+**Fix:** Adopt `ukgraph_final.md` naming:
+- UKGraph = whole system
+- UKBoring = workflows
+- UKOpportunity = economic signals
+- UKProducts = physical goods
+
+### 4. Stale markdown files
+
+These are superseded and should be removed or archived:
+- `moat.md` (contradicted by `formula.md`)
+- `plant.md` (superseded by `plant2.md`)
+- `ukgraph_v2.md` (superseded by `ukgraph_v3.md`)
+- `ukgraph_sharpened.md` (superseded by `ukgraph_v3.md`)
+- `boringuk_v2.md` (superseded by `boringuk.md`)
+- `unified.md` (superseded by `unified2.md`)
+- `economy.md` (implemented, no longer needed)
+- `plant2.md` (overlaps with `handover.md`)
+- `seed_data.md` (overlaps with `implementation.md`)
+
+### 5. Overstated claims in implementation.md
+
+- "Breadup: 10 tools ✅" — actually 4 tools in mcp_server.py
+- "UKGraph: 10 tools ✅" — actually all UNAVAILABLE (no data)
+- "PowPowPow: 12 tools ✅" — depends on broken external repo imports
+
+### 6. CAPABILITY.md references functions that don't exist
+
+`value_object()`, `max_offer()`, `find_flips()`, `find_local_constraints()`, `find_skill_opportunities()`, `compare_constraint_regions()`, `create_pet_performance()` — none of these exist in code.
+
+## What's the next priority
+
+1. **Fix hardcoded paths** — make the repo portable
+2. **Clean up naming** — adopt ukgraph_final.md naming everywhere
+3. **Remove stale files** — delete superseded markdown
+4. **Fix shared/ to be garden-agnostic**
+5. **Build the earn endpoint properly** — with real data feeds
+6. **Deploy MCP server** — make it accessible to agents
+7. **Run collectors** — fill the data gaps
+8. **Build YouTube probe** — "What can I do to make money in Oldham?"
+9. **Submit to Muse** — connector when ready
+10. **Measure outcomes** — QP verification loop
+
+## Key documents to read
+
+| Document | What it tells you |
+|----------|-------------------|
+| `northy.md` | The northstar: economic matching formula |
+| `ukgraph_v3.md` | Endpoint selection formula, uk.earn() |
+| `economic_router.md` | The core product vision |
+| `core_insight.md` | I AM LAZY + I WANT MONEY + I AM AN IDIOT |
+| `architecture.md` | Muse + Jev + QP-lite + Data Garden stack |
+| `boringuk_receipts.md` | How receipt verification works |
+| `uk_boring/earn.py` | The uk.earn() implementation |
+
+## Key files to NOT delete
+
+| File | Why |
+|------|-----|
+| `CANONICAL.md` | The architecture reference (constitution) |
+| `formula.md` | The moat theory (constitution) |
+| `northy.md` | The northstar |
+| `ukgraph_v3.md` | The endpoint selection formula |
+| `economic_router.md` | The product vision |
+| `core_insight.md` | The three principles |
+| `uk_boring/*.py` | The working implementation |
+| `mcp/*.py` | All 6 MCP servers (86 tools) |
+| `core/*.py` | The kernel types |
+| `tests/*.py` | 26 passing tests |
+
+## External dependencies
+
+| Dependency | Status | Fix needed |
+|------------|--------|------------|
+| `/home/box/powpowpow/` | 5 files reference it | Make adapter or copy data |
+| `/home/box/qprivately/` | Referenced in architecture.md | Archive reference only |
+| `/home/box/influence/` | Referenced in architecture.md | Archive reference only |
+
+## The data situation
+
+| Garden | Data | Status |
+|--------|------|--------|
+| PowPowPow | 17 chains with live data | ✅ Working (external repo) |
+| Breadup | 0 sold records | ⚠️ Collectors built, need local run |
+| UKGraph | 68 ONS records + ASHE downloads | ⚠️ Partial |
+| UK Boring | 36 curated tasks, 5 verified | ✅ Working |
+
+## The honest assessment
+
+The architecture is sound. The vision is clear. The code works where it touches real data.
+
+The main weakness: **too many markdown files describing what should exist, not enough code making it exist.**
+
+The next agent should:
+1. Pick ONE thing (probably `uk.earn()` for electricians in Oldham)
+2. Make it work end-to-end with real data
+3. Ignore everything else until that one thing works
+4. Let the garden grow from actual usage
