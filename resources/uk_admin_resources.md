@@ -14,18 +14,49 @@
 | Environment Agency Flood API | EA | Live flood warnings |
 | NHS Service Search | NHS | GP, hospital, pharmacy finder |
 
-## Council APIs (free, game-changing for Boring UK)
+## Routing / Commerce APIs
 
 | API | URL | What it unlocks |
 |-----|-----|-----------------|
-| UK Bin Collection API | [ukbinday.co.uk/api/v1](https://ukbinday.co.uk/api/v1/docs) | Bin collection schedules by postcode/UPRN |
-| UK Bin Collection Data (GitHub) | [robbrad/UKBinCollectionData](https://github.com/robbrad/UKBinCollectionData) | 348 stars, parsers for 100+ UK councils |
-| UK Planning API | [ukplanningapi.co.uk](https://ukplanningapi.co.uk/) | Planning applications as JSON/MCP, 500 req/month free |
-| Council Listener API | [council-api.arrakis.house](https://council-api.arrakis.house/api) | Council spending data, 39 councils, free |
-| DemocracyClub/LGSF | [GitHub](https://github.com/DemocracyClub/LGSF) | Local Government Scraper Framework for council data |
-| Gankdat UK Planning | [gankdat.com/stats/uk-planning](https://gankdat.com/stats/uk-planning) | 2K planning applications, normalized schema |
-| PlanIt | [planit.org.uk](https://www.planit.org.uk/) | 420 authorities, 20.6M applications, free API |
-| data.gov.uk Planning | [data.gov.uk](https://ckan.publishing.service.gov.uk/dataset/planning_applications) | National planning statistics |
+| Checkatrade Affiliate API | [developers.checkatrade.com](https://developers.checkatrade.com/) | POST job → sends to live tradespeople, 50K+ trades |
+| Taskrabbit Partner API | Partner access | Estimate, reserve, book, track local jobs |
+| UK Planning API | [ukplanningapi.co.uk](https://ukplanningapi.co.uk/) | 328 councils, planning applications as JSON/MCP |
+| UK Bin Collection API | [ukbinday.co.uk/api/v1](https://ukbinday.co.uk/api/v1/docs) | Bin collection by postcode/UPRN, 100+ councils |
+| Council Listener API | [council-api.arrakis.house](https://council-api.arrakis.house/api) | Council spending data, 39 councils |
+
+## Planning Data (game-changing)
+
+| Source | URL | What it unlocks |
+|--------|-----|-----------------|
+| Planning Data API | [planning.data.gov.uk](https://www.planning.data.gov.uk/docs) | 100+ datasets: conservation, listed buildings, brownfield, flood risk, Article 4 |
+| Planning Data CSV | [files.planning.data.gov.uk](https://files.planning.data.gov.uk/dataset/planning-application.csv) | Full planning applications CSV |
+| PlanIt API | [planit.org.uk](https://www.planit.org.uk/) | 420 authorities, 20.6M applications |
+
+## EV Charger Data
+
+| Source | URL | What it unlocks |
+|--------|-----|-----------------|
+| National Charge Point Registry | [data.gov.uk](https://www.data.gov.uk/dataset/1ce239a6-d720-4305-ab52-17793fedfac3/national-charge-point-registry) | Real-time UK EV charger locations, updated daily |
+| ONS EV Charger Stats | [ONS](https://www.ons.gov.uk/explore-local-statistics/indicators/electric-vehicle-public-charging-devices) | Chargers per 100K population by LA |
+| Leccy EV Tariffs | [leccy.net](https://leccy.net/charging/public) | All UK EV charging prices ranked |
+| Giga Power Open Data | [gigapoweruk.com](https://gigapoweruk.com/opendata) | EV charger data API (registration required) |
+
+## UPRN / Address Data
+
+| Source | URL | What it unlocks |
+|--------|-----|-----------------|
+| OS Open UPRN | [ordnancesurvey.co.uk](https://www.ordnancesurvey.co.uk/products/os-open-uprn) | 40M+ UPRNs, free CSV/GeoPackage |
+| Open UPRN Database | [uprn.uk](https://uprn.uk/) | Lookup any UPRN's public data |
+| Land Registry UPRN Lookup | [GOV.UK](https://www.gov.uk/government/statistical-data-sets/transaction-unique-identifier-and-uprn-look-up-table-dataset) | Transaction ↔ UPRN matching |
+| postcodes.io | [postcodes.io](https://postcodes.io) | Postcode → jurisdiction resolution |
+
+## Property / Housing APIs
+
+| Source | URL | What it unlocks |
+|--------|-----|-----------------|
+| HomeData API | [homedata.co.uk](https://homedata.co.uk/data/sold-prices) | 29M properties, sold prices by UPRN (free tier: 100 calls/mo) |
+| UK House Prices | [ukhouseprices.uk](https://ukhouseprices.uk/) | 31M+ records, free access |
+| EPC Open Data | MHCLG | 25M+ energy certificates (free API key) |
 
 ## MCP Servers
 
