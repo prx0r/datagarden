@@ -9,6 +9,7 @@ From SPEC.md section 10:
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Optional, List
 from enum import Enum
 
