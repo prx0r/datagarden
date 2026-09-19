@@ -33,6 +33,12 @@ def _get_client():
         return None
     api_key = os.environ.get('TYPESAFE_API_KEY')
     if not api_key:
+        try:
+            from agent_vault import get_key
+            api_key = get_key('typesafe')
+        except Exception:
+            pass
+    if not api_key:
         return None
     return TypeSafeClient()
 

@@ -26,7 +26,8 @@ def _get_or_key():
     if OR_KEY:
         return OR_KEY
     try:
-        OR_KEY = open(os.path.expanduser('~/.agentvault/openrouter_key.txt')).read().strip()
+        from agent_vault import get_key
+        OR_KEY = get_key('openrouter')
     except Exception:
         OR_KEY = os.environ.get('OPENROUTER_API_KEY', '')
     return OR_KEY

@@ -27,11 +27,14 @@ def _get_key() -> Optional[str]:
     if OPENROUTER_KEY:
         return OPENROUTER_KEY
     
-    # Try agentvault
-    key_path = Path.home() / '.agentvault' / 'openrouter_key.txt'
-    if key_path.exists():
-        OPENROUTER_KEY = key_path.read_text().strip()
-        return OPENROUTER_KEY
+    # Try agent vault
+    try:
+        from agent_vault import get_key
+        OPENROUTER_KEY = get_key('openrouter')
+        if OPENROUTER_KEY:
+            return OPENROUTER_KEY
+    except Exception:
+        pass
     
     # Try environment
     OPENROUTER_KEY = os.environ.get('OPENROUTER_API_KEY')
