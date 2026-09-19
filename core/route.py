@@ -73,6 +73,30 @@ class Freshness:
     source_frequency: str = ""  # daily, hourly, real-time
     max_age_hours: int = 168    # 7 days default
     stale: bool = False
+    source_licence: str = ""    # OGL, transformative, etc.
+    
+    def check_freshness(self, reference_time: datetime = None) -> str:
+        """Check if data is fresh. Returns quality state."""
+        if not self.last_observed:
+            return "UNKNOWN"
+        
+        if reference_time is None:
+            reference_time = datetime.now(timezone.utc)
+        
+        try:
+            from datetime import datetime as dt
+            observed = dt.fromisoformat(self.last_observed.replace('Z', '+00:00'))
+            age_hours = (reference_time - observed).total_seconds() / 3600
+            
+            if age_hours > self.max_age_hours:
+                self.stale = True
+                return "STALE"
+            elif age_hours > self.max_age_hours * 0.5:
+                return "KNOWN"  # getting old but not stale
+            else:
+                return "KNOWN"
+        except Exception:
+            return "UNKNOWN"
 
 
 @dataclass

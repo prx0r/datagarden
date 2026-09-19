@@ -74,32 +74,31 @@ def find_earn_opportunities(profile: CapabilityEnvelope) -> list:
 
 
 def _find_jobs(profile: CapabilityEnvelope) -> list:
-    """Find local jobs matching skills."""
+    """Find local jobs matching skills from canonical store."""
     opportunities = []
     
-    # Load contracts data
-    contracts_dir = Path(__file__).parent.parent / 'forests' / 'ukgraph' / 'data' / 'contracts'
-    if contracts_dir.exists():
-        for f in sorted(contracts_dir.glob('*.jsonl'), reverse=True)[:7]:
-            with open(f) as fh:
-                for line in fh:
-                    try:
-                        record = json.loads(line)
-                        contract = record.get('data', {})
-                        if _matches_skills(contract, profile):
-                            opportunities.append(Opportunity(
-                                action='BID_CONTRACT',
-                                title=contract.get('title', ''),
-                                description=contract.get('description', '')[:200],
-                                estimated_value_gbp=contract.get('value_gbp', 0),
-                                confidence=0.6,
-                                deadline=contract.get('award_date', ''),
-                                route_to_action='Submit via Contracts Finder',
-                                source='contracts_finder',
-                                evidence=[f"Contract {contract.get('contract_id', '')}"],
-                            ))
-                    except json.JSONDecodeError:
-                        continue
+    # Read from canonical observations
+    try:
+        from core.normalize import load_observations
+        observations = load_observations('ukopportunity', source='planning_data', limit=500)
+        
+        for obs in observations:
+            value = obs.get('value', {})
+            desc = value.get('description', '').lower()
+            ref = value.get('reference', '')
+            
+            if _matches_skills_text(desc, profile):
+                opportunities.append(Opportunity(
+                    action='CONTACT_DEVELOPER',
+                    title=f"Work for: {value.get('description', '')[:60]}",
+                    description=f"Planning application {ref} may need work",
+                    estimated_value_gbp=500,
+                    confidence=0.4,
+                    source='planning_data_canonical',
+                    evidence=[f"Observation {obs.get('observation_id', '')}"],
+                ))
+    except Exception:
+        pass
     
     return opportunities[:5]
 
