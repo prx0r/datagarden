@@ -204,6 +204,87 @@ Steps:
 
 ---
 
+## UK ADMIN (Boring UK) — "How do I actually get this boring UK thing done?"
+
+### Fake Muse requests
+
+| # | What somebody asks | Capability underneath |
+|---|---|---|
+| 1 | "I'm moving house next Friday. Sort everything." | `move_house(move_date, new_address)` |
+| 2 | "Keep my car legal and tell me only when you need me." | `manage_car(registration)` |
+| 3 | "I just bought this used car. Do everything I need to do." | `onboard_car(registration)` |
+| 4 | "Set me up as a sole trader properly." | `start_sole_trader()` |
+| 5 | "Keep my little business compliant." | `manage_business(company_number)` |
+| 6 | "I've changed my address. Fix it everywhere." | `change_details_everywhere(detail, old, new)` |
+| 7 | "My passport expires soon. Sort it." | `renew_passport()` |
+| 8 | "I turn 17 next month. Get me ready to drive." | `start_driving()` |
+| 9 | "I've got this government letter. Deal with whatever it wants." | `resolve_letter(letter_text)` |
+| 10 | "What boring stuff am I forgetting?" | `admin_audit(current_state)` |
+| 11 | "I'm starting a food business from home. Make me legal." | `start_regulated_business(business_type)` |
+| 12 | "Take care of everything expiring in the next 60 days." | `renewals(days_ahead)` |
+
+### Video titles (reversed)
+
+| # | Title | Hypothesis |
+|---|---|---|
+| 1 | "I Asked AI to Move House in Britain — Here's What Happened" | Universal pain. Everyone who moves faces 12+ admin tasks. Strong hook. |
+| 2 | "Can AI Actually Sort Out Your DVLA Admin?" | Specific, relatable, provable. DVLA is universally hated. |
+| 3 | "I Gave an AI 20 Annoying UK Government Letters" | Spectacle + utility. Comments write the next 20 videos. |
+| 4 | "How Much of Starting a UK Business Can AI Do For You?" | Directly answers the founder question. High save rate. |
+| 5 | "The Admin You're Forgetting After Moving House" | Fear of missing out. Personal. Every mover watches this. |
+| 6 | "Can AI Keep Your Car Legal Without You Noticing?" | Passive utility. "Tell me only when you need me" is the dream. |
+| 7 | "I Let AI Handle My Self Assessment — Did It Work?" | Proof of concept. Tax is the ultimate boring admin. |
+| 8 | "What Happens When AI Reads Your Council Letter" | Curiosity + mild fear. Everyone has gotten a weird letter. |
+| 9 | "The 12 Things You Need to Update When You Turn 17" | Birthday hook. Directly useful for teens + parents. |
+| 10 | "I Asked AI to Make My Home Food Business Legal" | Niche but high-intent. Food business = many regulations. |
+| 11 | "Can AI Manage Your MOT, Tax and Insurance?" | Car owners. Recurring value. High retention potential. |
+| 12 | "Every Deadline You're Probably Missing Right Now" | Universal anxiety. "What am I forgetting?" is always asked. |
+
+### Probe video to make first
+
+**"I Asked AI to Move House in Britain — Here's What Happened"**
+
+Steps:
+1. Actually use the move_house() capability
+2. Screen-record the full workflow output
+3. Show: 12 steps, 8 organisations, 3 deadlines, 4 agent-safe actions
+4. Actually complete 2-3 steps that are safe to demo (e.g. council notification info, electoral register check)
+5. Show the handoff moments: "Muse can't do this — you need to"
+6. End with: "Try it yourself — link in description"
+
+This proves the capability exists. Comments ask "what about Scotland?" "what if you rent?" "what about pets?" → that's the API spec.
+
+### The UKGraph connection
+
+UK Admin videos generate data that UKGraph consumes:
+
+```text
+"I'm moving house" video gets 200k views
+    ↓
+Comments: "moving to Manchester" "moving to Leeds" "moving to Bristol"
+    ↓
+UKGraph: "Which cities are gaining/losing population?"
+    ↓
+UKGraph discovers: "Manchester net inflow +12%, Bristol +8%"
+    ↓
+UK Admin adds: "Moving to Manchester? Here are local services"
+    ↓
+Next video: "Where in Britain Is Everyone Moving To?"
+```
+
+And UKGraph generates triggers for UK Admin:
+
+```text
+UKGraph: "Business closures in Manchester retail up 32%"
+    ↓
+UK Admin: "If you're affected by a business closure, here's
+           what you need to do — as an employee, landlord, or creditor"
+    ↓
+Video: "Your Business Just Closed. Here's What to Do Next."
+```
+
+---
+
 ## The capability-building sequence
 
 For each garden, follow this order:
@@ -227,4 +308,5 @@ Don't build the API until the video proves people care.
 | 1 | "Can Your Gaming PC Make Money While You Sleep?" | PowPowPow | Has live data (17 chains). Most clickable. |
 | 2 | "What Is Britain Running Out Of?" | UKGraph | Has ONS data. Broad appeal. |
 | 3 | "Is This Marketplace Camera a Bargain?" | Breadup | Needs eBay data (run locally). Most personal. |
-| 4 | "We Roasted 100 Dogs" | Roast.pet | Has existing orders. Viral potential. |
+| 4 | "I Asked AI to Move House in Britain" | UK Admin | 36 curated tasks ready. Universal pain. |
+| 5 | "We Roasted 100 Dogs" | Roast.pet | Has existing orders. Viral potential. |
