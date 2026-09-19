@@ -234,7 +234,11 @@ def _find_jobs(profile: CapabilityEnvelope, freshness: dict) -> list:
 
 
 def _find_contracts(profile: CapabilityEnvelope, freshness: dict) -> list:
-    """Find government contracts from canonical store."""
+    """Find government contracts from canonical store.
+    
+    CRITICAL: Only emit LIVE/FUTURE opportunities, never historical awards.
+    Awards are useful for intelligence but cannot become BID_CONTRACT routes.
+    """
     opportunities = []
 
     try:
@@ -243,11 +247,17 @@ def _find_contracts(profile: CapabilityEnvelope, freshness: dict) -> list:
 
         for obs in observations:
             value = obs.get('value', {})
-            title = value.get('title', '').lower()
-            desc = value.get('description', '').lower()
-            text = f"{title} {desc}"
+            title = value.get('title', '')
+            desc = value.get('description', '')
+            status = value.get('status', '').lower()
             obs_id = obs.get('observation_id', '')
+            value_gbp = value.get('value_gbp', 0)
 
+            # CRITICAL: Never emit awarded contracts as live bids
+            if 'award' in status:
+                continue  # Awards are historical intelligence, not bid opportunities
+
+            text = f"{title} {desc}".lower()
             matches = any(
                 skill.lower() in text for skill in profile.skills
             ) or any(
@@ -255,15 +265,14 @@ def _find_contracts(profile: CapabilityEnvelope, freshness: dict) -> list:
             )
 
             if matches:
-                value_gbp = value.get('value_gbp', 0)
                 opportunities.append(Opportunity(
                     action='BID_CONTRACT',
-                    title=f"Contract: {value.get('title', '')[:60]}",
+                    title=f"Contract: {title[:60]}",
                     description=f"Government contract worth £{value_gbp:,.0f} from {value.get('buyer', '')}",
-                    estimated_value_gbp=value_gbp * 0.1,
+                    estimated_value_gbp=value_gbp,  # NO fabrication — use actual value or UNKNOWN
                     confidence=0.3,
                     source='contracts_finder_canonical',
-                    evidence=[f"Awarded to {value.get('supplier', 'unknown')} for £{value_gbp:,.0f}"],
+                    evidence=[f"Contract {value.get('reference', '')}"],
                     provenance=[obs_id],
                     freshness=_freshness_for_source(obs.get('source_id', ''), freshness),
                 ))
@@ -360,23 +369,40 @@ def _find_service_gaps(profile: CapabilityEnvelope, freshness: dict) -> list:
 
 
 def _find_upgrades(profile: CapabilityEnvelope, freshness: dict) -> list:
-    """Find training/certifications that unlock more work."""
+    """Find training/certifications that unlock more work.
+    
+    CRITICAL: Every claim needs evidence. No fabricated market statistics.
+    """
     upgrades = []
 
     if 'electrician' in profile.skills and 'ev_certification' not in profile.certifications:
-        upgrades.append(Opportunity(
-            action='UPGRADE',
-            title='Get EV Charger Installation Certification',
-            description='EV charger installation is in high demand and requires specific certification. Training costs ~£280 and unlocks a growing market.',
-            estimated_value_gbp=0,
-            confidence=0.8,
-            requirements=['electrician qualification'],
-            route_to_action='Search for EV installation training courses',
-            source='market_analysis',
-            evidence=['EV charger demand up 31% in North West', 'Certified installers in short supply'],
-            provenance=[],
-            freshness={},
-        ))
+        # Check if there's actual evidence of EV demand in our data
+        ev_evidence = []
+        try:
+            from core.normalize import load_observations
+            observations = load_observations('ukopportunity', source='planning_data_api', limit=500)
+            for obs in observations:
+                desc = obs.get('value', {}).get('description', '').lower()
+                if 'ev' in desc or 'electric vehicle' in desc or 'charger' in desc:
+                    ev_evidence.append(obs.get('observation_id', ''))
+        except Exception:
+            pass
+
+        if ev_evidence:
+            # Only recommend if we have actual evidence
+            upgrades.append(Opportunity(
+                action='UPGRADE',
+                title='Get EV Charger Installation Certification',
+                description='EV charger installation may require specific certification. Training costs ~£280.',
+                estimated_value_gbp=0,  # UNKNOWN — we don't know the ROI
+                confidence=0.5,  # Lower confidence without proven demand data
+                requirements=['electrician qualification'],
+                route_to_action='Search for EV installation training courses',
+                source='planning_data_evidence',
+                evidence=[f"EV-related planning applications found: {len(ev_evidence)}"],
+                provenance=ev_evidence[:5],
+                freshness={},
+            ))
 
     return upgrades
 
