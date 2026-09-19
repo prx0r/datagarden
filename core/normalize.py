@@ -31,6 +31,10 @@ CANONICAL_ROOT = DATAGARDEN_ROOT / "canonical"
 GARDENS = {
     "ukopportunity": CANONICAL_ROOT / "ukopportunity",
     "ukproducts": CANONICAL_ROOT / "ukproducts",
+    "ukgraph": CANONICAL_ROOT / "ukgraph",
+    "ukadmin": CANONICAL_ROOT / "ukadmin",
+    "breadup": CANONICAL_ROOT / "breadup",
+    "powpowpow": CANONICAL_ROOT / "powpowpow",
 }
 
 # ---------------------------------------------------------------------------
