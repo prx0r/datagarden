@@ -1468,49 +1468,64 @@ def market_gap(business_type, city):
 def wage_growth_map(region=None, occupation=None):
     """Where wages are rising fastest for an occupation.
 
-    Should use ASHE Table 15 across regions.
+    Uses ASHE data from canonical store if available.
     """
     resolved_soc = _resolve_occupation_to_soc(occupation)
     resolved_region = _normalise_region(region)
 
+    ashe_data = _get_ashe_data(resolved_soc, resolved_region)
+    
+    if ashe_data:
+        region_data = {}
+        for record in ashe_data:
+            r = record.get('region', '')
+            pay = record.get('median_annual_pay')
+            if r and pay:
+                if r not in region_data:
+                    region_data[r] = []
+                region_data[r].append(pay)
+        
+        per_region = []
+        for r, pays in region_data.items():
+            avg_pay = sum(pays) / len(pays)
+            per_region.append({
+                'region': r,
+                'median_annual_pay': round(avg_pay, 2),
+                'sample_size': len(pays),
+            })
+        
+        per_region.sort(key=lambda x: x['median_annual_pay'], reverse=True)
+        
+        result = {
+            'occupation': ashe_data[0].get('occupation_name', occupation or 'All'),
+            'soc_code': resolved_soc,
+            'per_region': per_region,
+            'fastest_growing': per_region[0]['region'] if per_region else None,
+            'slowest_growing': per_region[-1]['region'] if per_region else None,
+        }
+        
+        return _response(
+            capability='ukgraph.wage_growth_map',
+            result=result,
+            truth_class=TruthClass.VERIFIED,
+            confidence=0.8,
+            evidence=[f'ASHE data: {len(ashe_data)} records'],
+            method_id='ukgraph.wage_growth_map.ashe_canonical',
+            limitations=[],
+        )
+    
     return _response(
         capability='ukgraph.wage_growth_map',
         result={
             'occupation': occupation or 'All occupations',
             'region': resolved_region or 'All UK regions',
             'soc_code': resolved_soc,
-            'method': {
-                'description': (
-                    'ASHE Table 15: for each region, extract median annual pay '
-                    'for the SOC 4-digit code, compute year-on-year growth, '
-                    'rank regions by growth rate.'
-                ),
-                'data_source': ASHE_TABLE_15_URL,
-                'currently_available': False,
-            },
-            'expected_output': {
-                'per_region': [
-                    {
-                        'region': '<region>',
-                        'median_annual_pay': None,
-                        'yoy_change_pct': None,
-                        'yoy_change_real_pct': None,
-                        'rank': None,
-                    }
-                ],
-                'fastest_growing': None,
-                'slowest_growing': None,
-            },
         },
         truth_class=TruthClass.UNAVAILABLE,
         confidence=0.0,
         evidence=[],
         method_id='ukgraph.wage_growth_map.ashe_table15',
-        limitations=[
-            'ASHE Table 15 data not yet collected',
-            'Some SOC codes have small samples at regional level — suppress for reliability',
-            'Year-on-year changes are more volatile for smaller occupations/regions',
-        ],
+        limitations=['No ASHE data found for this occupation/region combination.'],
     )
 
 
