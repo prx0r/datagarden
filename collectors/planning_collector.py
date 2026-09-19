@@ -18,16 +18,11 @@ def collect_recent_applications(days: int = 30, limit: int = 100) -> list:
     """Collect recent planning applications."""
     results = []
     try:
-        from datetime import timedelta
-        start = (date.today() - timedelta(days=days)).isoformat()
-        parts = start.split('-')
-        
+        # Query without date filter to get all applications
         resp = requests.get(
             f"{API_BASE}/entity.json",
             params={
                 'dataset': 'planning-application',
-                'start_date_year': parts[0],
-                'start_date_month': int(parts[1]),
                 'limit': min(limit, 500),
             },
             timeout=30,
@@ -106,12 +101,14 @@ def normalize_application(raw: dict) -> dict:
     return {
         'reference': raw.get('reference', ''),
         'address': raw.get('name', ''),
-        'description': raw.get('description', ''),
-        'status': raw.get('decision', '') or raw.get('status', ''),
-        'application_type': raw.get('application-type', ''),
-        'decision_date': raw.get('decision-date', ''),
+        'description': (raw.get('description', '') or '')[:500],
+        'status': raw.get('decision-date', '') and 'decided' or 'pending',
+        'entry_date': raw.get('entry-date', ''),
         'start_date': raw.get('start-date', ''),
-        'lpa': raw.get('organisation-entity', ''),
+        'decision_date': raw.get('decision-date', ''),
+        'lpa_entity': raw.get('organisation-entity', ''),
+        'entity': raw.get('entity', ''),
+        'typology': raw.get('typology', ''),
         'source': 'planning_data_api',
         'observed_at': datetime.now().isoformat(),
     }

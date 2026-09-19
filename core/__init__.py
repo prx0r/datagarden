@@ -9,6 +9,10 @@ from .outcome import Outcome, OutcomeStatus
 from .hardware import HardwareEconomics
 from .valuation import BreadupValuation
 from .workflow import Workflow, WorkflowStep
+from .route import Route, RouteType, ExecutionType, ProofRule, Evidence, Freshness
+from .capability_envelope import CapabilityEnvelope
+from .decision_spec import DecisionSpec, Primitive, Consequence, Fallback
+from .receipt import Receipt, Actuality, PROOF_RULES
 from .storage import (
     store_observation,
     store_observation_batch,
@@ -29,11 +33,27 @@ __all__ = [
     "BreadupValuation",
     "Workflow",
     "WorkflowStep",
+    "Route",
+    "CapabilityEnvelope",
+    "DecisionSpec",
+    "Receipt",
     # Enums
     "TruthClass",
     "Recoverability",
     "ActionClass",
     "OutcomeStatus",
+    "RouteType",
+    "ExecutionType",
+    "ProofRule",
+    "Primitive",
+    "Consequence",
+    "Fallback",
+    "Actuality",
+    # Data classes
+    "Evidence",
+    "Freshness",
+    # Constants
+    "PROOF_RULES",
     # Storage functions
     "store_observation",
     "store_observation_batch",
