@@ -220,6 +220,28 @@ def find_earn_opportunities(profile: CapabilityEnvelope) -> list:
     return opportunities
 
 
+def _get_salary_data(skills: list, location: str = 'UK Median') -> dict:
+    """Get salary data for skills from canonical store."""
+    try:
+        from core.normalize import load_observations
+        salaries = load_observations('ukopportunity', source='web_salary_data', limit=100)
+        
+        # Find matching salary data
+        for obs in salaries:
+            value = obs.get('value', {})
+            region = value.get('region', '')
+            if region == location or region == 'UK Median':
+                return {
+                    'median': value.get('salary_gbp', 39039),
+                    'source': value.get('source', ''),
+                }
+        
+        # Default UK median
+        return {'median': 39039, 'source': 'ONS ASHE 2025'}
+    except Exception:
+        return {'median': 39039, 'source': 'ONS ASHE 2025'}
+
+
 def _find_jobs(profile: CapabilityEnvelope, freshness: dict) -> list:
     """Find local jobs matching skills from canonical store.
     
@@ -259,6 +281,13 @@ def _find_jobs(profile: CapabilityEnvelope, freshness: dict) -> list:
             value_label = value_choice.get('choice', 'medium') if isinstance(value_choice, dict) else 'medium'
             value_map = {'low': 100, 'medium': 300, 'high': 750, 'very_high': 2000}
             estimated_value = value_map.get(value_label, 300)
+            
+            # Adjust value based on salary data
+            salary_data = _get_salary_data(profile.skills, profile.location)
+            if salary_data['median']:
+                # Rough estimate: planning application work = 1-3 days
+                daily_rate = salary_data['median'] / 260  # 260 working days
+                estimated_value = max(estimated_value, daily_rate * 1.5)  # 1.5x daily rate
 
             if score >= 5 and is_actionable:
                 opportunities.append(Opportunity(
