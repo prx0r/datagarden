@@ -1,274 +1,220 @@
-# Human Tasks — Unlock the Full Data Garden
+# Human Tasks — Unlock the Full Data Garden System
 
-Every action a human must take before the garden runs on its own.
-
----
-
-## Table of Contents
-
-1. [System Setup](#system-setup)
-2. [API Keys & Accounts](#api-keys--accounts)
-3. [Manual Downloads](#manual-downloads)
-4. [YouTube Channel Setup](#youtube-channel-setup)
-5. [Platform Submissions](#platform-submissions)
-6. [Daily/Ongoing Human Actions](#dailyongoing-human-actions)
+Every API key, download, account, and action a human must take before the system runs autonomously.
 
 ---
 
-## System Setup
+## 1. CRITICAL — Must Have for Basic Functionality
 
-| # | Task | Command | What It Unlocks | Priority |
-|---|------|---------|-----------------|----------|
-| 1 | Install Python 3.10+ | `python3 --version` | Everything | CRITICAL |
-| 2 | Install FFmpeg | `sudo apt install ffmpeg` | Video assembly (all Shorts) | CRITICAL |
-| 3 | Create virtualenv + install deps | `cd /home/box/datagarden && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt` | All Python collectors & MCP servers | CRITICAL |
-| 4 | Install openpyxl | `pip install openpyxl` | ASHE earnings + Business Demography XLSX parsing (UKGraph) | NICE-TO-HAVE |
+Without these the garden cannot collect data, generate content, or publish.
 
----
+### 1.1 Software Installations
 
-## API Keys & Accounts
+| # | Item | What It Is | How to Get | Cost | What It Unlocks | Source File |
+|---|------|-----------|------------|------|-----------------|-------------|
+| 1 | **Python 3.10+** | Runtime for all collectors and content pipeline | `python3 --version` | FREE | Everything | All `*.py` |
+| 2 | **FFmpeg** | Video assembly for Shorts | `sudo apt install ffmpeg` | FREE | All video generation | `content/pipeline.py` |
+| 3 | **pip dependencies** | Python packages for collectors, voice, thumbnails | `cd /home/box/datagarden && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt` | FREE | All Python modules | `requirements.txt` |
+| 4 | **openpyxl** | XLSX parsing for ASHE earnings + Business Demography | `pip install openpyxl` | FREE | ASHE earnings collector | `collectors/ukgraph_historical.py` |
 
-### CRITICAL — Required for Core Gardens
+### 1.2 API Keys
 
-| # | Service | What You Get | Where | Cost | Unlocks | Priority |
-|---|---------|-------------|-------|------|---------|----------|
-| 1 | **Companies House API Key** | Real-time company births/deaths stream | https://developer.company-information.service.gov.uk/ | FREE | UKGraph live collector (`companies_house.py`), company formation tasks (UKAdmin) | CRITICAL |
-| 2 | **YouTube Data API Key** | Upload videos + read analytics | https://console.cloud.google.com → Create project → Enable YouTube Data API v3 → Create API key | FREE (10k units/day) | YouTube Shorts publishing loop, analytics feedback, content experiments | CRITICAL |
-| 3 | **TypeSafe API Key** (Jev) | Typed observation classification, hypothesis scoring, audience response analysis | https://console.typesafe.ai/keys | FREE ($0.042/Mtok input, output free) | Jev classification of observations, content quality gating, batch processing (`shared/jev.py`) | CRITICAL |
+| # | Service | What It Is | Where to Get | Cost | What It Unlocks | Env Var |
+|---|---------|-----------|--------------|------|-----------------|---------|
+| 5 | **Companies House API Key** | Real-time UK company births/deaths stream + bulk data | https://developer.company-information.service.gov.uk/ | FREE | `companies_house.py` live streaming, 5M company bulk, UKAdmin tasks | `COMPANIES_HOUSE_API_KEY` |
+| 6 | **YouTube Data API Key** | Upload videos, read analytics, manage channel | https://console.cloud.google.com | FREE (10k units/day) | Shorts publishing loop, analytics feedback, experiments | `YOUTUBE_API_KEY` |
+| 7 | **TypeSafe API Key (Jev)** | Typed observation classification, hypothesis scoring, audience analysis | https://console.typesafe.ai/keys | FREE ($0.042/Mtok in, out free) | `shared/jev.py` classification across all three forests | `TYPESAFE_API_KEY` |
 
-### NICE-TO-HAVE — Improves Data Quality
+### 1.3 Account Registrations and Manual Actions
 
-| # | Service | What You Get | Where | Cost | Unlocks | Priority |
-|---|---------|-------------|-------|------|---------|----------|
-| 4 | **Apify Token** | Better eBay scraping (structured data, no HTML parsing) | https://apify.com → Sign up → Settings → API & Integrations → Create token | FREE ($5/mo credit, no card needed) | `collectors/ebay_sold.py`, ~2,500 listings/month across 50 categories | NICE-TO-HAVE |
-| 5 | **Kaggle Account + API Key** | 2.8M eBay product listings dataset | https://www.kaggle.com → Sign up → Settings → API → Create New Token → Save to `~/.kaggle/kaggle.json` | FREE | `collectors/breadup_historical.py --download-kaggle`, product normalization, title→entity mapping | NICE-TO-HAVE |
-| 6 | **MOT History API Credentials** | Vehicle MOT history lookup | https://register-mot-history.api.gov.uk/ | FREE | `collectors/mot_history.py`, vehicle admin tasks | NICE-TO-HAVE |
+| # | Action | URL | What It Unlocks | Notes |
+|---|--------|-----|-----------------|-------|
+| 8 | **Create YouTube channel** | https://studio.youtube.com | All Shorts publishing | Required before any content goes live |
+| 9 | **Upload first 3 probe Shorts** | YouTube Studio -> Upload -> Set as Short (vertical, <60s) | First attention signals, experiment data | Use `content/shorts/short_*.mp4` |
+| 10 | **Add thumbnails** | YouTube Studio upload flow | Click-through rate measurement | Use `content/shorts/thumb_*.png` |
+| 11 | **Record analytics after 24-48h** | YouTube Studio -> Analytics | Update experiment JSONs | Without this Jev cannot score audience response |
 
-**MOT API setup** requires 4 env vars:
-```
-MOT_CLIENT_ID=...
-MOT_CLIENT_SECRET=...
-MOT_TENANT_ID=...
-MOT_API_KEY=...
-```
+### 1.4 Configuration Steps
 
----
-
-## Manual Downloads
-
-These datasets must be downloaded manually — the collectors try but may fail from a VPS.
-
-| # | Dataset | Records | Where | Size | What It Unlocks | Priority |
-|---|---------|---------|-------|------|-----------------|----------|
-| 1 | **NBER Best Offer Bargaining Data** | 98M Best Offer records (2012-13) | https://www.nber.org/research/data/best-offer-sequential-bargaining | Large (download page, may require manual link following) | Negotiation models, seller acceptance behavior, "What should I offer?" capability | NICE-TO-HAVE |
-| 2 | **Kaggle eBay Product Listings** | ~980K (2020) + 1.8M (2021) | https://www.kaggle.com/datasets/promptcloud/ebay-product-listing-dataset | ~200MB compressed | Product normalization, title→entity mapping, historical Breadup seed | NICE-TO-HAVE |
-| 3 | **Companies House Bulk Snapshot** | ~5M companies | https://download.companieshouse.gov.uk/ (auto-detected by `ukgraph_historical.py`) | ~469MB compressed | Full UK company database for UKGraph joins | NICE-TO-HAVE |
-
-**How to download NBER data:**
-1. Visit https://www.nber.org/research/data/best-offer-sequential-bargaining
-2. Find the download link (may be a zip/tar.gz)
-3. Download to `/home/box/datagarden/forests/breadup/data/historical/nber_raw/`
-4. Run: `python -m collectors.breadup_historical --load-kaggle` (after placing files)
-
-**How to download Kaggle data:**
-```bash
-pip install kaggle
-mkdir -p ~/.kaggle
-echo '{"username":"YOUR_USER","key":"YOUR_KEY"}' > ~/.kaggle/kaggle.json
-chmod 600 ~/.kaggle/kaggle.json
-python -m collectors.breadup_historical --download-kaggle
-```
+| # | Step | Command | What It Unlocks |
+|---|------|---------|-----------------|
+| 12 | **Copy .env.example to .env** | `cp .env.example .env` | All collectors read keys from here |
+| 13 | **Add Companies House key** | Edit `.env`: `COMPANIES_HOUSE_API_KEY=your_key` | Live company data |
+| 14 | **Add YouTube API key** | Edit `.env`: `YOUTUBE_API_KEY=your_key` | Video upload + analytics |
+| 15 | **Add TypeSafe key** | Edit `.env`: `TYPESAFE_API_KEY=your_key` | Jev classification pipeline |
+| 16 | **Set up daily cron** | `python -m collectors.run_daily` via crontab | Automated daily collection |
 
 ---
 
-## YouTube Channel Setup
+## 2. HIGH — Significantly Improves Data Quality
 
-| # | Task | URL | What It Unlocks | Priority |
-|---|------|-----|-----------------|----------|
-| 1 | Create YouTube channel | https://studio.youtube.com | All Shorts publishing | CRITICAL |
-| 2 | Upload first 3 probe Shorts | https://studio.youtube.com → Upload → Set as Short (vertical, <60s) | First attention signals, experiment data | CRITICAL |
-| 3 | Add thumbnails from `content/shorts/thumb_*.png` | YouTube Studio upload flow | Click-through rate measurement | CRITICAL |
-| 4 | Record analytics after 24-48 hours | YouTube Studio → Analytics | Update experiment JSONs with impressions, CTR, views, likes, comments | CRITICAL |
-| 5 | Set channel description + links | YouTube Studio → Customization | Brand presence, MCP connector discoverability | NICE-TO-HAVE |
+Without these the garden works but has gaps in data coverage and historical depth.
+
+### 2.1 API Keys and Accounts
+
+| # | Service | What It Is | Where to Get | Cost | What It Unlocks | Env Var |
+|---|---------|-----------|--------------|------|-----------------|---------|
+| 17 | **Apify Token** | Structured eBay scraping (no HTML parsing) | https://apify.com | FREE ($5/mo credit, no card) | `collectors/ebay_sold.py`, ~2500 listings/mo | `APIFY_TOKEN` |
+| 18 | **Kaggle Account + API Key** | 2.8M eBay product listings + batch GPU | https://www.kaggle.com | FREE | `breadup_historical.py --download-kaggle` | `~/.kaggle/kaggle.json` |
+| 19 | **MOT History API Credentials** | UK vehicle MOT history lookup | https://register-mot-history.api.gov.uk/ | FREE | `collectors/mot_history.py`, vehicle admin | `MOT_CLIENT_ID`, `MOT_CLIENT_SECRET`, `MOT_TENANT_ID`, `MOT_API_KEY` |
+
+### 2.2 Data Downloads
+
+| # | Dataset | Records | Where | Size | What It Unlocks |
+|---|---------|---------|-------|------|-----------------|
+| 20 | **NBER Best Offer Bargaining Data** | 98M records (2012-13) | https://www.nber.org/research/data/best-offer-sequential-bargaining | Large | Negotiation models, seller acceptance behavior |
+| 21 | **Kaggle eBay Product Listings** | ~980K + 1.8M | https://www.kaggle.com/datasets/promptcloud/ebay-product-listing-dataset | ~200MB | Product normalization, title-to-entity mapping |
+| 22 | **Companies House Bulk Snapshot** | ~5M companies | https://download.companieshouse.gov.uk/ | ~469MB | Full UK company database for UKGraph joins |
+
+### 2.3 Configuration Steps
+
+| # | Step | Command | What It Unlocks |
+|---|------|---------|-----------------|
+| 23 | **Install apify-client** | `pip install apify-client` | Apify eBay scraping |
+| 24 | **Install kaggle CLI** | `pip install kaggle` | Kaggle dataset downloads |
+| 25 | **Add MOT credentials to .env** | Edit `.env` with all 4 MOT vars | Vehicle MOT history collector |
 
 ---
 
-## Platform Submissions
+## 3. MEDIUM — Nice to Have
 
-| # | Platform | URL | What It Unlocks | Priority |
-|---|----------|-----|-----------------|----------|
-| 1 | **Submit Muse Connector** | https://muse.ai/platform | DataGarden as a Muse capability (agents can ask "Is this a bargain?", "What should I mine?", etc.) | NICE-TO-HAVE |
+These improve workflow, discoverability, or add optional capabilities.
+
+| # | Item | What It Is | Where | Cost | What It Unlocks | Env Var |
+|---|------|-----------|-------|------|-----------------|---------|
+| 26 | **Muse Connector Submission** | DataGarden as a Muse capability | https://muse.ai/platform | FREE | Agents can ask "Is this a bargain?" etc. | N/A |
+| 27 | **Groq API Key** | Ultra-fast free inference for scripts | https://console.groq.com/keys | FREE (30 RPM, 1000 RPD) | Optional script generation | `GROQ_API_KEY` |
+| 28 | **OpenRouter API Key** | Hub for 300+ models, many free | https://openrouter.ai/keys | FREE | Alternative inference routing | `OPENROUTER_API_KEY` |
+| 29 | **Docker** | Isolated containers for federated services | `sudo apt install docker.io docker-compose` | FREE | GitGoblin/Dell/QDW in containers | N/A |
+| 30 | **PostgreSQL** | Production database for OpenPatala | `sudo apt install postgresql` | FREE | Entity/assertion/event storage | `DATABASE_URL` |
 
 ---
 
-## Seed Data Commands (Run After Keys Are Set)
+## 4. LOW — Future Features
 
-These commands populate the gardens with historical data. Some work immediately, others need the keys above.
+These are for expanding the system beyond its current scope.
 
-### PowPowPow — Works Immediately (No Keys Needed)
+### 4.1 Future Data Sources
 
-```bash
-# CoinGecko price history (10-30 calls/min free)
-python -m collectors.powpowpow_historical --seed-coingecko
+| # | Service | What It Is | Where to Get | Cost | What It Unlocks |
+|---|---------|-----------|--------------|------|-----------------|
+| 31 | **OpenAlex API Key** | Academic research graph | https://docs.openalex.org/ | FREE (works without key) | GitGoblin research collection |
+| 32 | **GitHub Token** | Higher API rate limits | https://github.com/settings/tokens | FREE | GitGoblin GitHub scanning |
+| 33 | **Petals (pip)** | Distributed volunteer LLM swarm | `pip install petals` | FREE (slow, ~4-6 tok/s) | Free pool compute for batch research |
+| 34 | **Oracle Always Free ARM VM** | 24/7 self-hosted small-model inference | https://cloud.oracle.com | FREE (2 OCPU, 12GB RAM) | Private llama.cpp endpoint |
 
-# Minerstat hardware benchmarks
-python -m collectors.powpowpow_historical --seed-minerstat
+### 4.2 Future API Keys (Dell / LLM Router)
 
-# WhatToMine network stats
-python -m collectors.powpowpow_historical --seed-what-to-mine
+| # | Service | Where to Get | Cost | Env Var |
+|---|---------|--------------|------|---------|
+| 35 | **Anthropic** (Claude) | https://console.anthropic.com/settings/keys | PAID ($5 free credit) | `ANTHROPIC_API_KEY` |
+| 36 | **OpenAI** (GPT) | https://platform.openai.com/api-keys | PAID ($5 free credit) | `OPENAI_API_KEY` |
+| 37 | **Google AI** (Gemini, 1M context) | https://aistudio.google.com/apikey | FREE | `GOOGLE_AI_API_KEY` |
+| 38 | **HuggingFace** (hundreds of models) | https://huggingface.co/settings/tokens | FREE ($0.10/mo free) | `HUGGINGFACE_TOKEN` |
+| 39 | **DeepSeek** (best price-to-quality) | https://platform.deepseek.com/api_keys | PAID (10 yuan free) | `DEEPSEEK_API_KEY` |
+| 40 | **Groq** (fastest inference) | https://console.groq.com/keys | FREE (30 RPM) | `GROQ_API_KEY` |
+| 41 | **Cerebras** (ultra-fast) | https://cloud.cerebras.ai | FREE | `CEREBRAS_API_KEY` |
+| 42 | **Together AI** | https://api.together.xyz/settings/api-keys | FREE ($1 credit) | `TOGETHER_API_KEY` |
+| 43 | **Fireworks** | https://fireworks.ai/account/api-keys | FREE ($1 credit) | `FIREWORKS_API_KEY` |
+| 44 | **DeepInfra** (cheapest per-token) | https://deepinfra.com/dash/api_keys | FREE ($1 credit) | `DEEPINFRA_API_KEY` |
+| 45 | **Mistral** (EU provider) | https://console.mistral.ai/api-keys/ | FREE | `MISTRAL_API_KEY` |
+| 46 | **Cloudflare AI** (10K free neurons/day) | https://dash.cloudflare.com | FREE | `CLOUDFLARE_AI_API_KEY`, `CLOUDFLARE_AI_ACCOUNT_ID` |
+| 47 | **Artificial Analysis** (benchmarks) | https://artificialanalysis.ai/api-key-management-redirect | FREE (100 req/24h) | `AA_API_KEY` |
+| 48 | **OpenCode Go** | https://dev.opencode.ai/go | FREE | `OPENCODE_GO_API_KEY` |
 
-# Bitcoin metrics from Blockchair
-python -m collectors.powpowpow_historical --seed-bitcoin
+### 4.3 Future Config (GitGoblin)
 
-# Reconstruct historical profitability
-python -m collectors.powpowpow_historical --seed-profitability
+| # | Env Var | What It Does | Where to Get |
+|---|---------|-------------|--------------|
+| 49 | `GITGOBLIN_LLM_BASE_URL` | OpenAI-compatible endpoint for architecture enrichment | Any compatible endpoint |
+| 50 | `GITGOBLIN_LLM_API_KEY` | Key for above | Same source as base URL |
+| 51 | `GITGOBLIN_LLM_MODEL` | Model name for above | Same source |
 
-# All at once
-python -m collectors.powpowpow_historical --seed-all
-```
+### 4.4 Future Config (QDW Federation)
 
-### UKGraph — Mostly Works (Some Need Keys)
+| # | Env Var | What It Does |
+|---|---------|-------------|
+| 52 | `QDW_GITGOBLIN_URL` | Connect QDW to GitGoblin |
+| 53 | `QDW_DELL_URL` | Connect QDW to Dell |
+| 54 | `QDW_FORGE_URL` | Connect QDW to Forge |
+| 55 | `QDW_FORGE_ADMIN_TOKEN` | Authenticate to Forge |
+| 56 | `QDW_FORGE_LEASE_SECRET` | Sign Forge lease tokens (min 32 bytes) |
+| 57 | `QDW_FORGE_CLIENT_KEYS_JSON` | Client auth map for Forge API |
+| 58 | `QDW_FEDERATION_TIMEOUT_SECONDS` | Federation request timeout (default 20) |
+| 59 | `QDW_FEDERATION_LAB_MODE` | Set to "1" for lab/testing mode |
 
-```bash
-# Nomis employment data (free, no key)
-python -m collectors.ukgraph_historical --seed-nomis
+### 4.5 Future Config (OpenPatala)
 
-# ASHE earnings (free XLSX download, needs openpyxl)
-python -m collectors.ukgraph_historical --seed-ashe
+| # | Env Var | What It Does | Default |
+|---|---------|-------------|---------|
+| 60 | `DATABASE_URL` | PostgreSQL connection for entity storage | `postgresql://patala:patala@127.0.0.1:5432/openpatala` |
 
-# Companies House bulk (free, large download ~469MB)
-python -m collectors.ukgraph_historical --seed-companies-house
+---
 
-# Land Registry Price Paid (free CSV)
-python -m collectors.ukgraph_historical --seed-land-registry
-
-# Business Demography (free XLSX, needs openpyxl)
-python -m collectors.ukgraph_historical --seed-business-demography
-
-# Contracts Finder (free API, no key)
-python -m collectors.ukgraph_historical --seed-contracts
-
-# All at once
-python -m collectors.ukgraph_historical --seed-all
-```
-
-### Breadup — Needs Keys for Full Power
-
-```bash
-# CoinGecko reference prices (free, no key)
-python -m collectors.breadup_historical --seed-coingecko
-
-# SoldComps API (free, no key)
-python -m collectors.breadup_historical --seed-soldcomps
-
-# Kaggle datasets (needs kaggle CLI + API key)
-python -m collectors.breadup_historical --download-kaggle
-
-# NBER data (needs manual download first)
-python -m collectors.breadup_historical --download-nber
-
-# Free eBay scraping (works but may be blocked from VPS IPs)
-python -m collectors.ebay_free
-
-# Apify eBay scraping (needs APIFY_TOKEN)
-python -m collectors.ebay_sold
-```
-
-### UK Admin — Works Immediately
+## 5. Environment Variables Summary
 
 ```bash
-# Curated tasks (built-in, no keys)
-python -m collectors.uk_admin_collectors --seed-curated
+# CRITICAL — Garden won't function without these
+COMPANIES_HOUSE_API_KEY=        # https://developer.company-information.service.gov.uk/
+YOUTUBE_API_KEY=                # https://console.cloud.google.com
+TYPESAFE_API_KEY=               # https://console.typesafe.ai/keys
 
-# Full GOV.UK service map (free API)
-python -m collectors.uk_admin_collectors --seed-govuk
-
-# Build action graph
-python -m collectors.uk_admin_collectors --build-graph
-```
-
-### Live Collectors (Daily)
-
-```bash
-# ONS job adverts (free, no key)
-python -m collectors.ons_jobs
-
-# Companies House streaming (needs COMPANIES_HOUSE_API_KEY)
-python -m collectors.companies_house
-
-# MOT History (needs MOT credentials)
-python -m collectors.mot_history --lookup AB12CDE
-
-# Run all daily collectors
-python -m collectors.run_daily
-```
-
----
-
-## Daily/Ongoing Human Actions
-
-| # | Action | Frequency | What It Unlocks | Priority |
-|---|--------|-----------|-----------------|----------|
-| 1 | Run `python -m collectors.run_daily` | Daily | Fresh data collection + Jev classification + manifest | CRITICAL |
-| 2 | Upload generated Shorts to YouTube | After each generation | Attention signals for the feedback loop | CRITICAL |
-| 3 | Record YouTube analytics (24-48h after upload) | After each upload | Experiment decisions (deepen/prune/pivot) | CRITICAL |
-| 4 | Update experiment JSONs with metrics | After analytics review | Jev hypothesis scoring, content strategy | CRITICAL |
-| 5 | Review Jev classification logs | Weekly | Identify high-severity, high-actionability signals | NICE-TO-HAVE |
-| 6 | Check Apify credit usage | Monthly | Stay within $5/mo free tier | NICE-TO-HAVE |
-
----
-
-## Environment Variables Summary
-
-Copy `.env.example` to `.env` and fill in:
-
-```bash
-# CRITICAL
-COMPANIES_HOUSE_API_KEY=        # Free from https://developer.company-information.service.gov.uk/
-YOUTUBE_API_KEY=                # Free from https://console.cloud.google.com
-TYPESAFE_API_KEY=               # Free from https://console.typesafe.ai/keys
-
-# NICE-TO-HAVE
-APIFY_TOKEN=                    # Free $5/mo from https://apify.com
-
-# MOT History (if using vehicle features)
-MOT_CLIENT_ID=
+# HIGH — Improves data quality
+APIFY_TOKEN=                    # https://apify.com ($5/mo free)
+MOT_CLIENT_ID=                  # https://register-mot-history.api.gov.uk/
 MOT_CLIENT_SECRET=
 MOT_TENANT_ID=
 MOT_API_KEY=
+
+# MEDIUM — Nice to have
+GROQ_API_KEY=                   # https://console.groq.com/keys
+OPENROUTER_API_KEY=             # https://openrouter.ai/keys
+
+# LOW — Future: Dell/LLM Router
+AA_API_KEY=                     # https://artificialanalysis.ai
+OPENCODE_GO_API_KEY=            # https://dev.opencode.ai/go
+CLOUDFLARE_AI_API_KEY=          # https://dash.cloudflare.com
+CLOUDFLARE_AI_ACCOUNT_ID=
+ANTHROPIC_API_KEY=              # https://console.anthropic.com
+OPENAI_API_KEY=                 # https://platform.openai.com
+GOOGLE_AI_API_KEY=              # https://aistudio.google.com
+HUGGINGFACE_TOKEN=              # https://huggingface.co/settings/tokens
+DEEPSEEK_API_KEY=               # https://platform.deepseek.com
+CEREBRAS_API_KEY=               # https://cloud.cerebras.ai
+TOGETHER_API_KEY=               # https://api.together.xyz
+FIREWORKS_API_KEY=              # https://fireworks.ai
+DEEPINFRA_API_KEY=              # https://deepinfra.com
+MISTRAL_API_KEY=                # https://console.mistral.ai
+
+# LOW — Future: GitGoblin
+OPENALEX_API_KEY=               # https://docs.openalex.org
+GITHUB_TOKEN=                   # https://github.com/settings/tokens
+GITGOBLIN_LLM_BASE_URL=
+GITGOBLIN_LLM_API_KEY=
+GITGOBLIN_LLM_MODEL=
+
+# LOW — Future: QDW Federation
+QDW_GITGOBLIN_URL=
+QDW_DELL_URL=
+QDW_FORGE_URL=
+QDW_FORGE_ADMIN_TOKEN=
+QDW_FORGE_LEASE_SECRET=
+QDW_FORGE_CLIENT_KEYS_JSON=
+DATABASE_URL=postgresql://patala:patala@127.0.0.1:5432/openpatala
 ```
 
 ---
 
-## Priority Summary
-
-### CRITICAL (garden won't function without these)
-1. Python 3.10+ + FFmpeg + pip install
-2. Companies House API key
-3. YouTube Data API key
-4. TypeSafe API key (Jev)
-5. YouTube channel + first 3 Shorts uploaded
-6. Analytics recording after 48h
-
-### NICE-TO-HAVE (garden works but with less data)
-1. Apify token (better eBay data)
-2. Kaggle account (2.8M historical eBay listings)
-3. NBER data download (98M negotiation records)
-4. MOT History API credentials
-5. Muse connector submission
-6. openpyxl for XLSX parsing
-
----
-
-## Quick Start Checklist
+## 6. Quick Start Checklist
 
 ```
 [ ] sudo apt install ffmpeg
-[ ] cd /home/box/datagarden && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
+[ ] cd /home/box/datagarden && python3 -m venv venv && source venv/bin/activate
+[ ] pip install -r requirements.txt && pip install openpyxl
 [ ] cp .env.example .env
-[ ] Get Companies House key → add to .env
-[ ] Get YouTube API key → add to .env
-[ ] Get TypeSafe key → add to .env
+[ ] Get Companies House key -> add to .env
+[ ] Get YouTube API key -> add to .env
+[ ] Get TypeSafe key -> add to .env
 [ ] python -m collectors.uk_admin_collectors --seed-curated
 [ ] python -m collectors.powpowpow_historical --seed-all
 [ ] python -m collectors.ukgraph_historical --seed-nomis

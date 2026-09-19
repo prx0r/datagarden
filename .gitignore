@@ -4,3 +4,4 @@ venv/
 .env
 forests/*/data/historical/
 data/nber/
+.agentvault/
