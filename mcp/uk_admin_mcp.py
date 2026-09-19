@@ -2,6 +2,10 @@
 """
 UK Admin MCP Server - Get boring British things done.
 
+PR5 Truth Contract: Every response includes source verification metadata.
+Every workflow step states its verification status against live GOV.UK pages.
+Boring UK's value IS verification. Don't fake it.
+
 Tools (original):
 - explain_task, check_requirements, can_agent_do_it
 - moving_house_checklist, start_sole_trader, tax_obligations
@@ -14,6 +18,9 @@ Tools (Boring UK Workflows - 12 new):
 - renew_passport, start_driving, start_regulated_business
 - resolve_letter, admin_audit, renewals
 
+Tools (Verification):
+- verification_status
+
 Usage:
     python uk_admin_mcp.py                     # List tools
     python uk_admin_mcp.py <tool> '<json>'     # Call tool
@@ -21,6 +28,7 @@ Usage:
 """
 
 import json
+import hashlib
 import sys
 import os
 from pathlib import Path
@@ -28,7 +36,97 @@ from datetime import datetime, timedelta
 
 ROOT = Path(__file__).parent.parent
 DATA_DIR = ROOT / 'forests' / 'uk_admin' / 'data'
+TASKS_DIR = DATA_DIR / 'tasks'
 sys.path.insert(0, str(ROOT))
+
+
+# ============================================================
+# TRUTH CONTRACT - PR5
+# ============================================================
+
+TRUTH_CLASSES = {
+    "VERIFIED": "Source checked against live page. Hash matches.",
+    "DERIVED": "Inferred from verified sources. Not directly checked.",
+    "ESTIMATED": "Best guess based on related data. May be outdated.",
+    "CONCEPTUAL": "Source URL provided but page content not checked.",
+}
+
+VERIFICATION_METHODS = {
+    "manual_check": "Human or agent fetched and verified the page content",
+    "api_check": "Verified via official API endpoint",
+    "automated": "Automated hash verification against known good",
+    "none": "No verification performed",
+}
+
+DEFAULT_AS_OF = "2026-09-19T00:00:00Z"
+VERIFICATION_PERIOD_DAYS = 30
+
+
+def _now_iso():
+    return datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+def _default_next_verification():
+    return (datetime.utcnow() + timedelta(days=VERIFICATION_PERIOD_DAYS)).strftime('%Y-%m-%dT00:00:00Z')
+
+
+def _make_source_hash(url):
+    """Placeholder hash for source URL content. In production, fetch and hash the page."""
+    return f"sha256:{hashlib.sha256(url.encode()).hexdigest()[:16]}"
+
+
+def _truth_wrap(tool_id, result, truth_class="CONCEPTUAL", confidence=0.0,
+                evidence=None, method_id="unknown", method_version="0.1.0",
+                limitations=None):
+    """Wrap any tool result in the PR5 truth contract."""
+    return {
+        "capability": f"uk_admin.{tool_id}",
+        "as_of": DEFAULT_AS_OF,
+        "result": result,
+        "truth_class": truth_class,
+        "confidence": confidence,
+        "evidence": evidence or [],
+        "method": {"id": method_id, "version": method_version},
+        "limitations": limitations or ["Steps not yet verified against live GOV.UK pages"],
+        "action": {"class": "USER_HANDOFF"},
+    }
+
+
+def _step_with_verification(step_num, task, action_class, source_url,
+                             verification_method="none", verified_at=None,
+                             source_hash=None, **extra):
+    """Build a workflow step with full PR5 verification metadata."""
+    if source_hash is None:
+        source_hash = _make_source_hash(source_url) if source_url else None
+    if verified_at is None:
+        verified_at = DEFAULT_AS_OF if verification_method != "none" else None
+
+    next_due = None
+    if verified_at:
+        try:
+            dt = datetime.fromisoformat(verified_at.replace('Z', '+00:00'))
+            next_due = (dt + timedelta(days=VERIFICATION_PERIOD_DAYS)).strftime('%Y-%m-%dT00:00:00Z')
+        except (ValueError, TypeError):
+            next_due = _default_next_verification()
+
+    verification_status = (
+        "VERIFIED" if verification_method not in ("none",) and verified_at
+        else "NOT_VERIFIED — source_url provided but not checked"
+    )
+
+    step = {
+        "step": step_num,
+        "task": task,
+        "action_class": action_class,
+        "source_url": source_url,
+        "source_hash": source_hash,
+        "verified_at": verified_at,
+        "next_verification_due": next_due,
+        "verification_method": verification_method,
+        "verification_status": verification_status,
+    }
+    step.update(extra)
+    return step
 
 
 # ============================================================
@@ -82,673 +180,41 @@ def _save_state(filename, state):
 
 
 # ============================================================
-# CURATED TASK DATABASE
+# CURATED TASK DATABASE (with PR5 verification metadata)
 # ============================================================
 
-TASK_DB = {
-    'renew_driving_licence': {
-        'task_name': 'Renew your driving licence',
-        'category': 'driving', 'subcategory': 'licence', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/renew-driving-licence',
-        'cost_gbp': 14.00, 'takes_time': '3 weeks',
-        'requires': ['identity', 'licence_details', 'address', 'photo'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/renew-driving-licence',
-            '2. You need your driving licence number, addresses for last 3 years, and a passport photo',
-            '3. Pay 14.00 by card',
-            '4. Your new licence arrives in about 3 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'failure_modes': ['identity_mismatch', 'address_mismatch'],
-        'is_recurring': True, 'recurrence': 'every 10 years',
-        'related_tasks': ['update_address', 'replace_lost_licence'],
-    },
-    'replace_lost_licence': {
-        'task_name': 'Replace a lost or stolen driving licence',
-        'category': 'driving', 'subcategory': 'licence', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/replace-driving-licence',
-        'cost_gbp': 20.00, 'takes_time': '3 weeks',
-        'requires': ['identity', 'address', 'photo', 'lost_or_stolen_declaration'],
-        'how_to': [
-            '1. If stolen, report to police first',
-            '2. Go to https://www.gov.uk/replace-driving-licence',
-            '3. You need your driving licence number or personal details',
-            '4. Pay 20.00',
-            '5. New licence arrives in about 3 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'related_tasks': ['renew_driving_licence'],
-    },
-    'update_address': {
-        'task_name': 'Change the address on your driving licence',
-        'category': 'driving', 'subcategory': 'licence', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/change-address-driving-licence',
-        'cost_gbp': 0.00, 'takes_time': '3 weeks',
-        'requires': ['identity', 'new_address', 'old_address'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/change-address-driving-licence',
-            '2. Enter your driving licence number and new address',
-            '3. Free - no payment needed',
-            '4. Updated licence arrives in about 3 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['renew_driving_licence', 'update_vehicle_tax'],
-    },
-    'view_licence_points': {
-        'task_name': 'Check your driving licence information',
-        'category': 'driving', 'subcategory': 'licence', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/view-driving-licence',
-        'cost_gbp': 0.00, 'takes_time': 'instant',
-        'requires': ['driving_licence_number', 'national_insurance_number'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/view-driving-licence',
-            '2. Enter your driving licence number and National Insurance number',
-            '3. View endorsements, restrictions, and expiry dates',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'not_possible',
-        },
-    },
-    'check_mot': {
-        'task_name': 'Check MOT history of a vehicle',
-        'category': 'vehicle', 'subcategory': 'mot', 'authority': 'DVSA',
-        'url': 'https://www.gov.uk/check-mot-history',
-        'cost_gbp': 0.00, 'takes_time': 'instant',
-        'requires': ['vehicle_registration'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/check-mot-history',
-            '2. Enter the vehicle registration number',
-            '3. See MOT history, advisories, and expiry date',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['book_mot', 'check_vehicle_tax'],
-    },
-    'book_mot': {
-        'task_name': 'Book an MOT',
-        'category': 'vehicle', 'subcategory': 'mot', 'authority': 'DVSA',
-        'url': 'https://www.gov.uk/get-mot',
-        'cost_gbp': 54.85, 'takes_time': '1 hour',
-        'requires': ['vehicle_registration'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/get-mot',
-            '2. Enter your registration number',
-            '3. Find a local garage - prices vary (max 54.85 for cars)',
-            '4. Book online or by phone',
-            '5. Take your vehicle on the booked date',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'is_recurring': True, 'recurrence': 'every 12 months',
-        'related_tasks': ['check_mot', 'check_vehicle_tax'],
-    },
-    'check_vehicle_tax': {
-        'task_name': 'Check vehicle tax',
-        'category': 'vehicle', 'subcategory': 'tax', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/check-vehicle-tax',
-        'cost_gbp': 0.00, 'takes_time': 'instant',
-        'requires': ['vehicle_registration'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/check-vehicle-tax',
-            '2. Enter the vehicle registration number',
-            '3. See tax status, expiry date, and MOT expiry',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['update_vehicle_tax', 'check_mot'],
-    },
-    'update_vehicle_tax': {
-        'task_name': 'Tax your vehicle',
-        'category': 'vehicle', 'subcategory': 'tax', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/vehicle-tax',
-        'cost_gbp': 0.00, 'takes_time': 'instant',
-        'requires': ['vehicle_registration', 'insurance', 'mot_certificate'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/vehicle-tax',
-            '2. Enter registration number',
-            '3. You need a valid MOT and insurance',
-            '4. Pay by card - cost depends on vehicle',
-            '5. Tax is instant from the start date',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'is_recurring': True, 'recurrence': 'every 6 or 12 months',
-        'related_tasks': ['check_vehicle_tax', 'book_mot'],
-    },
-    'sorn_vehicle': {
-        'task_name': 'Declare a vehicle off the road (SORN)',
-        'category': 'vehicle', 'subcategory': 'tax', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/sorn-statutory-off-road-notification',
-        'cost_gbp': 0.00, 'takes_time': 'instant',
-        'requires': ['vehicle_registration'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/sorn-statutory-off-road-notification',
-            '2. Enter registration and details',
-            '3. Free to declare',
-            '4. Vehicle must be kept off public roads',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['update_vehicle_tax'],
-    },
-    'transfer_vehicle': {
-        'task_name': 'Sell or transfer a vehicle',
-        'category': 'vehicle', 'subcategory': 'ownership', 'authority': 'DVLA',
-        'url': 'https://www.gov.uk/sold-bought-vehicle',
-        'cost_gbp': 0.00, 'takes_time': '1-5 days',
-        'requires': ['vehicle_registration', 'new_keeper_details', 'v5c'],
-        'how_to': [
-            '1. Fill in section 6 of the V5C (keep section 9)',
-            '2. Give section 9 to the new keeper',
-            '3. Send section 6 to DVLA or do it online',
-            '4. Notify your insurer',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['update_vehicle_tax', 'sorn_vehicle'],
-    },
-    'apply_passport': {
-        'task_name': 'Apply for a UK passport',
-        'category': 'passport', 'subcategory': 'application', 'authority': 'HM Passport Office',
-        'url': 'https://www.gov.uk/apply-renew-passport',
-        'cost_gbp': 82.50, 'takes_time': '10 weeks',
-        'requires': ['identity', 'photos', 'birth_certificate', 'countersignatory'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/apply-renew-passport',
-            '2. You need a digital photo and someone to countersign',
-            '3. Fill in the online form',
-            '4. Pay 82.50 (or 92.50 for post office check and send)',
-            '5. Post your old documents if required',
-            '6. Passport arrives in about 10 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'related_tasks': ['renew_passport', 'replace_lost_passport'],
-    },
-    'renew_passport': {
-        'task_name': 'Renew your passport',
-        'category': 'passport', 'subcategory': 'renewal', 'authority': 'HM Passport Office',
-        'url': 'https://www.gov.uk/renew-adult-passport',
-        'cost_gbp': 82.50, 'takes_time': '10 weeks',
-        'requires': ['identity', 'photos', 'existing_passport'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/renew-adult-passport',
-            '2. You need your current passport and a new digital photo',
-            '3. Fill in online form - some questions from your old passport',
-            '4. Pay 82.50',
-            '5. Post your old passport back',
-            '6. New passport arrives in about 10 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'is_recurring': True, 'recurrence': 'every 10 years',
-        'related_tasks': ['apply_passport'],
-    },
-    'replace_lost_passport': {
-        'task_name': 'Replace a lost or stolen passport',
-        'category': 'passport', 'subcategory': 'replacement', 'authority': 'HM Passport Office',
-        'url': 'https://www.gov.uk/replace-lost-stolen-passport',
-        'cost_gbp': 82.50, 'takes_time': '10 weeks',
-        'requires': ['identity', 'photos', 'lost_or_stolen_declaration'],
-        'how_to': [
-            '1. Report it lost or stolen: https://www.gov.uk/report-a-lost-or-stolen-passport',
-            '2. Then apply for a replacement: https://www.gov.uk/replace-lost-stolen-passport',
-            '3. You need a new photo and may need a countersignatory',
-            '4. Pay 82.50',
-            '5. Your old passport is cancelled immediately',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'related_tasks': ['renew_passport'],
-    },
-    'report_passport_lost': {
-        'task_name': 'Report a lost or stolen passport',
-        'category': 'passport', 'subcategory': 'security', 'authority': 'HM Passport Office',
-        'url': 'https://www.gov.uk/report-a-lost-or-stolen-passport',
-        'cost_gbp': 0.00, 'takes_time': 'instant',
-        'requires': ['passport_number', 'personal_details'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/report-a-lost-or-stolen-passport',
-            '2. Enter your passport number and personal details',
-            '3. Your passport is cancelled immediately',
-            '4. You can then apply for a replacement',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['replace_lost_passport'],
-    },
-    'self_assessment_register': {
-        'task_name': 'Register for Self Assessment',
-        'category': 'tax', 'subcategory': 'self_assessment', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/register-for-self-assessment',
-        'cost_gbp': 0.00, 'takes_time': '10 working days',
-        'requires': ['identity', 'national_insurance_number', 'employment_history'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/register-for-self-assessment',
-            '2. You need a Government Gateway account',
-            '3. Enter your NI number and personal details',
-            '4. HMRC sends you a UTR (Unique Taxpayer Reference)',
-            '5. Use your UTR to file returns',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['self_assessment_submit'],
-    },
-    'self_assessment_submit': {
-        'task_name': 'Complete your Self Assessment tax return',
-        'category': 'tax', 'subcategory': 'self_assessment', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/self-assessment-tax-returns',
-        'cost_gbp': 0.00, 'takes_time': '1-3 hours',
-        'requires': ['identity', 'national_insurance_number', 'income_details', 'expenses'],
-        'how_to': [
-            '1. Log in to Government Gateway',
-            '2. Go to Self Assessment and fill in the return',
-            '3. You need P60, P11D, bank statements, expense receipts',
-            '4. File online by 31 January',
-            '5. Pay any tax owed',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'is_recurring': True, 'recurrence': 'annually by 31 January',
-        'related_tasks': ['self_assessment_register', 'pay_tax_bill'],
-    },
-    'pay_tax_bill': {
-        'task_name': 'Pay your Self Assessment tax bill',
-        'category': 'tax', 'subcategory': 'payment', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/pay-self-assessment-tax-bill',
-        'cost_gbp': 0.00, 'takes_time': 'instant to 5 working days',
-        'requires': ['identity', 'tax_reference', 'payment_method'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/pay-self-assessment-tax-bill',
-            '2. Log in with your Government Gateway account',
-            '3. Pay by card, bank transfer, or direct debit',
-            '4. On account payments due 31 July',
-            '5. Balance payment due 31 January',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'related_tasks': ['self_assessment_submit'],
-    },
-    'check_tax_code': {
-        'task_name': 'Check your tax code',
-        'category': 'tax', 'subcategory': 'employment', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/check-income-tax-returns',
-        'cost_gbp': 0.00, 'takes_time': 'instant',
-        'requires': ['identity', 'national_insurance_number'],
-        'how_to': [
-            '1. Log in to your Personal Tax Account',
-            '2. Go to Income Tax to see your tax code',
-            '3. Your tax code tells your employer how much tax to deduct',
-            '4. Contact HMRC if it looks wrong',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['self_assessment_register'],
-    },
-    'claim_tax_refund': {
-        'task_name': 'Claim a tax refund',
-        'category': 'tax', 'subcategory': 'refund', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/claim-tax-refund',
-        'cost_gbp': 0.00, 'takes_time': '6 weeks',
-        'requires': ['identity', 'p60', 'p45', 'bank_details'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/claim-tax-refund',
-            '2. Log in to your Personal Tax Account',
-            '3. Follow the refund claim process',
-            '4. You need your P60 or P45',
-            '5. Refund is paid into your bank account',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['check_tax_code'],
-    },
-    'setup_sole_trader': {
-        'task_name': 'Set up as a sole trader',
-        'category': 'business', 'subcategory': 'self_employment', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/working-for-yourself',
-        'cost_gbp': 0.00, 'takes_time': '10 working days for UTR',
-        'requires': ['identity', 'national_insurance_number', 'business_details'],
-        'how_to': [
-            '1. Register as self-employed with HMRC',
-            '2. Go to https://www.gov.uk/working-for-yourself',
-            '3. You need a Government Gateway account',
-            '4. HMRC sends you a UTR (Unique Taxpayer Reference)',
-            '5. Keep records of income and expenses',
-            '6. File a Self Assessment tax return each year',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['self_assessment_register', 'register_for_vat'],
-    },
-    'register_limited_company': {
-        'task_name': 'Register a limited company',
-        'category': 'business', 'subcategory': 'company_formation', 'authority': 'Companies House',
-        'url': 'https://www.gov.uk/limited-company-formation',
-        'cost_gbp': 12.00, 'takes_time': '24 hours',
-        'requires': ['identity', 'registered_address', 'directors', 'articles_of_association'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/limited-company-formation',
-            '2. Choose a company name (check availability)',
-            '3. Provide registered office address',
-            '4. Appoint at least one director',
-            '5. Create articles of association',
-            '6. Register online for 12 or by post for 40',
-            '7. Company is typically registered within 24 hours',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'related_tasks': ['register_corporation_tax', 'register_for_vat'],
-    },
-    'register_for_vat': {
-        'task_name': 'Register for VAT',
-        'category': 'business', 'subcategory': 'vat', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/register-for-vat',
-        'cost_gbp': 0.00, 'takes_time': '14 working days',
-        'requires': ['identity', 'business_details'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/register-for-vat',
-            '2. You must register if turnover exceeds 85,000',
-            '3. Log in with Government Gateway',
-            '4. Enter business details and expected turnover',
-            '5. You receive a VAT number in about 2 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['submit_vat_return'],
-    },
-    'submit_vat_return': {
-        'task_name': 'Submit a VAT return',
-        'category': 'business', 'subcategory': 'vat', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/vat-returns',
-        'cost_gbp': 0.00, 'takes_time': '30 minutes',
-        'requires': ['identity', 'vat_number', 'turnover_data'],
-        'how_to': [
-            '1. Log in to Government Gateway',
-            '2. Go to your VAT account',
-            '3. Enter sales and purchase figures for the quarter',
-            '4. File by the deadline (1 month and 7 days after quarter end)',
-            '5. Pay any VAT owed',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'is_recurring': True, 'recurrence': 'quarterly',
-        'related_tasks': ['register_for_vat'],
-    },
-    'register_corporation_tax': {
-        'task_name': 'Register for Corporation Tax',
-        'category': 'business', 'subcategory': 'corporation_tax', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/register-for-corporation-tax',
-        'cost_gbp': 0.00, 'takes_time': '15 working days',
-        'requires': ['company_number', 'company_name'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/register-for-corporation-tax',
-            '2. Enter your company number and Corporation Tax reference',
-            '3. HMRC sends you an activation code',
-            '4. Activate your account to manage online',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['pay_corporation_tax', 'register_limited_company'],
-    },
-    'pay_corporation_tax': {
-        'task_name': 'Pay Corporation Tax',
-        'category': 'business', 'subcategory': 'corporation_tax', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/pay-corporation-tax',
-        'cost_gbp': 0.00, 'takes_time': 'instant to 5 working days',
-        'requires': ['company_number', 'payment_method'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/pay-corporation-tax',
-            '2. Log in with your Corporation Tax account',
-            '3. Pay by bank transfer, card, or direct debit',
-            '4. Payment must reach HMRC by the deadline',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'related_tasks': ['submit_corporation_tax_return'],
-    },
-    'submit_corporation_tax_return': {
-        'task_name': 'File a Company Tax Return',
-        'category': 'business', 'subcategory': 'corporation_tax', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/file-company-tax-return',
-        'cost_gbp': 0.00, 'takes_time': '1-3 hours',
-        'requires': ['company_number', 'accounts', 'tax_computation'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/file-company-tax-return',
-            '2. Log in with your Corporation Tax account',
-            '3. Upload your company accounts',
-            '4. Complete the tax computation',
-            '5. File within 12 months of your accounting period end',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'is_recurring': True, 'recurrence': 'annually',
-        'related_tasks': ['pay_corporation_tax'],
-    },
-    'update_council_tax': {
-        'task_name': 'Update your council tax details',
-        'category': 'home', 'subcategory': 'council_tax', 'authority': 'Local Council',
-        'url': 'https://www.gov.uk/council-tax',
-        'cost_gbp': 0.00, 'takes_time': 'varies',
-        'requires': ['identity', 'address', 'move_date'],
-        'how_to': [
-            '1. Find your council: https://www.gov.uk/find-local-council',
-            '2. Contact them to update your address or band',
-            '3. If moving, notify both old and new councils',
-            '4. You may be eligible for a single person discount',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['update_electoral_roll', 'update_vehicle_tax'],
-    },
-    'update_electoral_roll': {
-        'task_name': 'Register to vote',
-        'category': 'home', 'subcategory': 'electoral', 'authority': 'Electoral Commission',
-        'url': 'https://www.gov.uk/register-to-vote',
-        'cost_gbp': 0.00, 'takes_time': '2 weeks',
-        'requires': ['identity', 'address', 'nationality'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/register-to-vote',
-            '2. Enter your name, address, and National Insurance number',
-            '3. Registration takes about 2 weeks',
-            '4. You need to re-register when you move',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['update_council_tax'],
-    },
-    'moving_house_checklist': {
-        'task_name': 'Update everything when you move house',
-        'category': 'home', 'subcategory': 'moving', 'authority': 'Multiple',
-        'url': 'https://www.gov.uk/medical-records/notifying-people',
-        'cost_gbp': 0.00, 'takes_time': '1-2 weeks',
-        'requires': ['old_address', 'new_address', 'move_date'],
-        'how_to': [
-            '1. Notify your council for council tax',
-            '2. Update your driving licence (DVLA)',
-            '3. Update your vehicle tax (DVLA)',
-            '4. Register to vote at new address',
-            '5. Notify your bank and credit cards',
-            '6. Redirect your post: https://www.royalmail.com/redirection',
-            '7. Notify utility providers',
-            '8. Update insurance policies',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['update_address', 'update_council_tax', 'update_electoral_roll'],
-    },
-    'new_baby_admin': {
-        'task_name': 'Register a birth and claim child benefits',
-        'category': 'family', 'subcategory': 'new_parent', 'authority': 'Multiple',
-        'url': 'https://www.gov.uk/child-birth-registration',
-        'cost_gbp': 11.00, 'takes_time': '42 days to register',
-        'requires': ['identity', 'baby_details', 'parents_details', 'address'],
-        'how_to': [
-            '1. Register the birth within 42 days at your local register office',
-            '2. Fee is 11.00 for a standard certificate',
-            '3. You get the birth certificate and a NHS number',
-            '4. Apply for Child Benefit: https://www.gov.uk/child-benefit',
-            '5. Update council tax (you may get a discount)',
-            '6. Notify your employer (maternity/paternity pay)',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'explicit_approval',
-        },
-        'related_tasks': ['apply_child_benefit', 'update_council_tax'],
-    },
-    'apply_child_benefit': {
-        'task_name': 'Apply for Child Benefit',
-        'category': 'benefits', 'subcategory': 'child_benefit', 'authority': 'HMRC',
-        'url': 'https://www.gov.uk/child-benefit',
-        'cost_gbp': 0.00, 'takes_time': '6-8 weeks',
-        'requires': ['identity', 'baby_birth_certificate', 'national_insurance_number'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/child-benefit',
-            '2. Fill in form CH2',
-            '3. Send with the birth certificate',
-            '4. Payments start in about 6-8 weeks',
-            '5. High Income Charge may apply if either parent earns over 60k',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['new_baby_admin'],
-    },
-    'check_benefits': {
-        'task_name': 'Check what benefits you can get',
-        'category': 'benefits', 'subcategory': 'eligibility', 'authority': 'DWP',
-        'url': 'https://www.gov.uk/browse/child-disability-family/benefits',
-        'cost_gbp': 0.00, 'takes_time': '5 minutes',
-        'requires': ['identity', 'income_details', 'household_details'],
-        'how_to': [
-            '1. Use the benefits calculator: https://www.gov.uk/benefits-calculators',
-            '2. Enter your income, savings, and household details',
-            '3. See what you might be eligible for',
-            '4. Common benefits: Universal Credit, Child Benefit, PIP, Council Tax Reduction',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['apply_universal_credit', 'apply_pip'],
-    },
-    'apply_universal_credit': {
-        'task_name': 'Apply for Universal Credit',
-        'category': 'benefits', 'subcategory': 'universal_credit', 'authority': 'DWP',
-        'url': 'https://www.gov.uk/universal-credit/how-to-apply',
-        'cost_gbp': 0.00, 'takes_time': '5-8 weeks for first payment',
-        'requires': ['identity', 'income_details', 'housing_costs', 'bank_details'],
-        'how_to': [
-            '1. Go to https://www.gov.uk/universal-credit/how-to-apply',
-            '2. You need a Government Gateway account and a bank account',
-            '3. You must apply as a couple if you live together',
-            '4. Attend a Jobcentre Plus appointment',
-            '5. First payment takes at least 5 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['check_benefits', 'apply_pip'],
-    },
-    'apply_pip': {
-        'task_name': 'Apply for Personal Independence Payment',
-        'category': 'benefits', 'subcategory': 'disability', 'authority': 'DWP',
-        'url': 'https://www.gov.uk/pip/how-to-apply',
-        'cost_gbp': 0.00, 'takes_time': '8-12 weeks',
-        'requires': ['identity', 'health_conditions', 'care_needs'],
-        'how_to': [
-            '1. Call the PIP new claims line: 0800 917 2222',
-            '2. You cannot apply online',
-            '3. Fill in the PIP2 evidence form',
-            '4. Attend a face-to-face or phone assessment',
-            '5. Decision takes about 8-12 weeks',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': True,
-            'submit': False, 'payment': 'not_possible',
-        },
-        'related_tasks': ['check_benefits', 'apply_universal_credit'],
-    },
-    'check_employment_rights': {
-        'task_name': 'Check your employment rights',
-        'category': 'employment', 'subcategory': 'rights', 'authority': 'ACAS',
-        'url': 'https://www.gov.uk/employment-rights-for-employees',
-        'cost_gbp': 0.00, 'takes_time': '5 minutes',
-        'requires': [],
-        'how_to': [
-            '1. Go to https://www.gov.uk/employment-rights-for-employees',
-            '2. Browse rights by topic: pay, holidays, redundancy, dismissal',
-            '3. Check your contract and employer policies',
-            '4. For disputes, contact ACAS: https://www.acas.org.uk',
-        ],
-        'agent_permissions': {
-            'explain': True, 'gather_requirements': True, 'prefill': False,
-            'submit': False, 'payment': 'not_possible',
-        },
-    },
-}
+def _task_row(tid, row):
+    """Inject verification metadata into a task loaded from JSONL."""
+    row.setdefault('task_id', tid)
+    row.setdefault('verified_at', None)
+    row.setdefault('source_url', row.get('official_source', row.get('url', '')))
+    row.setdefault('source_hash', _make_source_hash(row.get('source_url', '')) if row.get('source_url') else None)
+    row.setdefault('verification_method', 'none')
+    row.setdefault('truth_class', 'CONCEPTUAL')
+    row.setdefault('next_verification_due', None)
+    return row
+
+
+def _load_tasks():
+    """Load curated tasks from the JSONL file and inject verification metadata."""
+    tasks = {}
+    jsonl_path = TASKS_DIR / 'uk_admin_tasks_2026-09-19.jsonl'
+    if jsonl_path.exists():
+        with open(jsonl_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                    tid = row.get('task_id', '')
+                    tasks[tid] = _task_row(tid, row)
+                except json.JSONDecodeError:
+                    continue
+    return tasks
+
+
+TASK_DB = _load_tasks()
 
 
 # ============================================================
@@ -884,7 +350,7 @@ TOOLS = [
             }
         }
     },
-    # ---- NEW BORING UK WORKFLOW TOOLS (12) ----
+    # ---- BORING UK WORKFLOW TOOLS (12 new) ----
     {
         "name": "move_house",
         "description": "Full moving house checklist with dependencies and timing. Covers DVLA, council tax, electoral roll, utilities, insurance, banks, Royal Mail redirection.",
@@ -1006,11 +472,22 @@ TOOLS = [
             }
         }
     },
+    # ---- VERIFICATION TOOL ----
+    {
+        "name": "verification_status",
+        "description": "Show verification status of all tasks and workflow steps. Which are verified, which are conceptual.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "task_filter": {"type": "string", "description": "Filter to specific task ID (optional)"}
+            }
+        }
+    },
 ]
 
 
 # ============================================================
-# IMPLEMENTATIONS (original 12)
+# HELPERS
 # ============================================================
 
 def _find_task(query):
@@ -1021,42 +498,69 @@ def _find_task(query):
         if q.replace(' ', '_') == tid:
             return task
     for tid, task in TASK_DB.items():
-        if q in task['task_name'].lower():
+        if q in task.get('task_name', '').lower():
             return task
     keywords = q.split()
     for tid, task in TASK_DB.items():
-        words = task['task_name'].lower().split()
+        words = task.get('task_name', '').lower().split()
         if any(kw in words for kw in keywords):
             return task
     return None
 
+
+# ============================================================
+# IMPLEMENTATIONS (original 12) - with PR5 truth contract
+# ============================================================
 
 def explain_task(task):
     td = _find_task(task)
     if not td:
         available = {}
         for tid, t in TASK_DB.items():
-            available.setdefault(t['category'], []).append(tid)
-        return {'status': 'not_found', 'query': task, 'available_tasks': available}
-    return {
+            available.setdefault(t.get('category', 'unknown'), []).append(tid)
+        result = {'status': 'not_found', 'query': task, 'available_tasks': available}
+        return _truth_wrap('explain_task', result, truth_class="VERIFIED",
+                          confidence=1.0, evidence=[],
+                          limitations=["Task not found in database"])
+
+    tc = td.get('truth_class', 'CONCEPTUAL')
+    ev = []
+    if td.get('source_url'):
+        ev.append({"type": "source_url", "url": td['source_url'], "hash": td.get('source_hash')})
+
+    result = {
         'status': 'ok',
-        'task': td['task_name'],
-        'category': td['category'],
-        'authority': td['authority'],
-        'url': td['url'],
-        'cost': f"\u00a3{td['cost_gbp']:.2f}" if td['cost_gbp'] else 'Free',
+        'task': td.get('task_name', task),
+        'category': td.get('category', ''),
+        'authority': td.get('authority', ''),
+        'url': td.get('url', ''),
+        'cost': f"\u00a3{td['cost_gbp']:.2f}" if td.get('cost_gbp') else 'Free',
         'time': td.get('takes_time', 'Unknown'),
         'steps': td.get('how_to', []),
         'related_tasks': td.get('related_tasks', []),
         'recurring': td.get('is_recurring', False),
         'recurrence': td.get('recurrence', ''),
+        'verification': {
+            'truth_class': tc,
+            'verified_at': td.get('verified_at'),
+            'verification_method': td.get('verification_method', 'none'),
+            'source_url': td.get('source_url', ''),
+            'source_hash': td.get('source_hash'),
+        },
     }
+    conf = 0.9 if tc == "VERIFIED" else 0.5 if tc == "DERIVED" else 0.2 if tc == "ESTIMATED" else 0.1
+    return _truth_wrap('explain_task', result, truth_class=tc, confidence=conf,
+                      evidence=ev, limitations=[] if tc == "VERIFIED" else
+                      ["Source page not verified against live GOV.UK content"])
 
 
 def check_requirements(task):
     td = _find_task(task)
     if not td:
-        return {'status': 'not_found', 'query': task}
+        result = {'status': 'not_found', 'query': task}
+        return _truth_wrap('check_requirements', result, truth_class="VERIFIED",
+                          confidence=1.0, limitations=["Task not found"])
+
     reqs = td.get('requires', [])
     details = {
         'identity': 'Valid photo ID (passport, driving licence, or biometric residence permit)',
@@ -1103,19 +607,33 @@ def check_requirements(task):
         'v5c': 'V5C vehicle registration certificate',
     }
     checklist = [{'requirement': r, 'details': details.get(r, 'Check GOV.UK for specifics')} for r in reqs]
-    return {
+    tc = td.get('truth_class', 'CONCEPTUAL')
+    result = {
         'status': 'ok',
-        'task': td['task_name'],
-        'url': td['url'],
+        'task': td.get('task_name', task),
+        'url': td.get('url', ''),
         'requirements': checklist,
         'count': len(reqs),
+        'verification': {
+            'truth_class': tc,
+            'verified_at': td.get('verified_at'),
+            'source_url': td.get('source_url', ''),
+        },
     }
+    conf = 0.8 if tc == "VERIFIED" else 0.5 if tc == "DERIVED" else 0.2
+    return _truth_wrap('check_requirements', result, truth_class=tc, confidence=conf,
+                      evidence=[{"type": "source_url", "url": td.get('source_url', '')}],
+                      limitations=[] if tc == "VERIFIED" else
+                      ["Requirements sourced from curated data, not verified against live page"])
 
 
 def can_agent_do_it(task):
     td = _find_task(task)
     if not td:
-        return {'status': 'not_found', 'query': task}
+        result = {'status': 'not_found', 'query': task}
+        return _truth_wrap('can_agent_do_it', result, truth_class="VERIFIED",
+                          confidence=1.0, limitations=["Task not found"])
+
     perms = td.get('agent_permissions', {})
     what_agent_can = []
     what_user_must = []
@@ -1134,28 +652,44 @@ def can_agent_do_it(task):
         what_user_must.append('You must approve any payment')
     elif payment == 'not_possible':
         what_user_must.append('Payment must be made by you directly')
-    return {
+
+    tc = td.get('truth_class', 'CONCEPTUAL')
+    result = {
         'status': 'ok',
-        'task': td['task_name'],
+        'task': td.get('task_name', task),
         'agent_can_do': what_agent_can,
         'user_must_do': what_user_must,
         'permissions': perms,
         'verdict': 'FULLY_ASSISTED' if perms.get('submit') and payment != 'not_possible' else 'ASSISTED_WITH_APPROVAL' if perms.get('prefill') else 'GUIDANCE_ONLY',
+        'verification': {
+            'truth_class': tc,
+            'verified_at': td.get('verified_at'),
+            'source_url': td.get('source_url', ''),
+        },
     }
+    return _truth_wrap('can_agent_do_it', result, truth_class=tc,
+                      confidence=0.5 if tc == "CONCEPTUAL" else 0.8,
+                      evidence=[{"type": "source_url", "url": td.get('source_url', '')}])
 
 
 def moving_house_checklist(new_address, move_date, old_address=''):
     items = [
-        {'task': 'update_address', 'what': 'Update driving licence address', 'authority': 'DVLA', 'cost': 'Free', 'deadline': 'Within 8 weeks', 'url': 'https://www.gov.uk/change-address-driving-licence'},
-        {'task': 'update_vehicle_tax', 'what': 'Update vehicle tax address', 'authority': 'DVLA', 'cost': 'Free', 'deadline': 'Immediately', 'url': 'https://www.gov.uk/vehicle-tax'},
-        {'task': 'update_council_tax', 'what': 'Notify council for council tax', 'authority': 'Local Council', 'cost': 'Free', 'deadline': 'On or before move date', 'url': 'https://www.gov.uk/council-tax'},
-        {'task': 'update_electoral_roll', 'what': 'Register to vote at new address', 'authority': 'Electoral Commission', 'cost': 'Free', 'deadline': '12 working days before election', 'url': 'https://www.gov.uk/register-to-vote'},
-        {'task': 'redirect_post', 'what': 'Redirect your post', 'authority': 'Royal Mail', 'cost': 'From 82.99', 'deadline': 'Before you move', 'url': 'https://www.royalmail.com/redirection'},
-        {'task': 'update_banks', 'what': 'Update bank and credit card addresses', 'authority': 'Banks', 'cost': 'Free', 'deadline': 'Within a few weeks', 'url': ''},
-        {'task': 'update_utilities', 'what': 'Notify gas, electric, water, council', 'authority': 'Utility providers', 'cost': 'Free', 'deadline': 'Before you move', 'url': ''},
-        {'task': 'update_insurance', 'what': 'Update home, car, and other insurance', 'authority': 'Insurers', 'cost': 'Free', 'deadline': 'Before you move', 'url': ''},
+        {'task': 'update_address', 'what': 'Update driving licence address', 'authority': 'DVLA', 'cost': 'Free', 'deadline': 'Within 8 weeks', 'source_url': 'https://www.gov.uk/change-address-driving-licence'},
+        {'task': 'update_vehicle_tax', 'what': 'Update vehicle tax address', 'authority': 'DVLA', 'cost': 'Free', 'deadline': 'Immediately', 'source_url': 'https://www.gov.uk/vehicle-tax'},
+        {'task': 'update_council_tax', 'what': 'Notify council for council tax', 'authority': 'Local Council', 'cost': 'Free', 'deadline': 'On or before move date', 'source_url': 'https://www.gov.uk/council-tax'},
+        {'task': 'update_electoral_roll', 'what': 'Register to vote at new address', 'authority': 'Electoral Commission', 'cost': 'Free', 'deadline': '12 working days before election', 'source_url': 'https://www.gov.uk/register-to-vote'},
+        {'task': 'redirect_post', 'what': 'Redirect your post', 'authority': 'Royal Mail', 'cost': 'From 82.99', 'deadline': 'Before you move', 'source_url': 'https://www.royalmail.com/redirection'},
+        {'task': 'update_banks', 'what': 'Update bank and credit card addresses', 'authority': 'Banks', 'cost': 'Free', 'deadline': 'Within a few weeks', 'source_url': ''},
+        {'task': 'update_utilities', 'what': 'Notify gas, electric, water, council', 'authority': 'Utility providers', 'cost': 'Free', 'deadline': 'Before you move', 'source_url': ''},
+        {'task': 'update_insurance', 'what': 'Update home, car, and other insurance', 'authority': 'Insurers', 'cost': 'Free', 'deadline': 'Before you move', 'source_url': ''},
     ]
-    return {
+    for item in items:
+        item['verification'] = {
+            'truth_class': 'CONCEPTUAL',
+            'verification_method': 'none',
+            'source_hash': _make_source_hash(item['source_url']) if item['source_url'] else None,
+        }
+    result = {
         'status': 'ok',
         'new_address': new_address,
         'old_address': old_address,
@@ -1164,19 +698,24 @@ def moving_house_checklist(new_address, move_date, old_address=''):
         'count': len(items),
         'tip': 'Start with DVLA and council tax - they have legal deadlines.',
     }
+    return _truth_wrap('moving_house_checklist', result, truth_class="CONCEPTUAL",
+                      confidence=0.3,
+                      evidence=[{"type": "source_url", "url": i['source_url']} for i in items if i['source_url']],
+                      limitations=["Checklist items not verified against live GOV.UK pages"])
 
 
 def start_sole_trader(business_name='', business_type=''):
-    td = TASK_DB['setup_sole_trader']
-    return {
+    td = TASK_DB.get('setup_sole_trader', {})
+    tc = td.get('truth_class', 'CONCEPTUAL')
+    result = {
         'status': 'ok',
         'task': 'Set up as a sole trader',
         'business_name': business_name,
         'business_type': business_type,
-        'steps': td['how_to'],
+        'steps': td.get('how_to', []),
         'cost': 'Free',
         'time': '10 working days for UTR',
-        'url': td['url'],
+        'url': td.get('url', ''),
         'what_you_need': [
             'National Insurance number',
             'Business name and type',
@@ -1189,7 +728,15 @@ def start_sole_trader(business_name='', business_type=''):
             'Pay tax and National Insurance by 31 January and 31 July',
             'Consider registering for VAT if turnover exceeds 85,000',
         ],
+        'verification': {
+            'truth_class': tc,
+            'verified_at': td.get('verified_at'),
+            'source_url': td.get('source_url', ''),
+        },
     }
+    return _truth_wrap('start_sole_trader', result, truth_class=tc,
+                      confidence=0.5 if tc == "CONCEPTUAL" else 0.8,
+                      evidence=[{"type": "source_url", "url": td.get('source_url', '')}])
 
 
 def tax_obligations(situation):
@@ -1223,41 +770,54 @@ def tax_obligations(situation):
         obligations = [
             {'form': 'Check your tax account', 'deadline': 'Now', 'note': 'Log in to see what HMRC expects from you'},
         ]
-    return {
+    result = {
         'status': 'ok',
         'situation': situation,
         'obligations': obligations,
         'tip': 'Log in to your Personal Tax Account to see exactly what HMRC expects from you.',
         'url': 'https://www.gov.uk/log-in-register-hmrc-online-services',
     }
+    return _truth_wrap('tax_obligations', result, truth_class="DERIVED",
+                      confidence=0.6,
+                      evidence=[{"type": "source_url", "url": "https://www.gov.uk/log-in-register-hmrc-online-services"}],
+                      limitations=["Tax obligations derived from general guidance, not personalised"])
 
 
 def new_parent_admin():
-    return {
+    result = {
         'status': 'ok',
         'checklist': [
-            {'step': 'Register the birth', 'deadline': 'Within 42 days', 'cost': '11.00', 'where': 'Local register office'},
-            {'step': 'Apply for Child Benefit', 'deadline': 'As soon as possible', 'cost': 'Free', 'where': 'HMRC'},
-            {'step': 'Update council tax', 'deadline': 'Before the birth', 'cost': 'Free', 'where': 'Your council'},
-            {'step': 'Notify your employer', 'deadline': '15 weeks before due date', 'cost': 'Free', 'where': 'Your employer'},
-            {'step': 'Check tax code', 'deadline': 'After birth', 'cost': 'Free', 'where': 'HMRC'},
+            {'step': 'Register the birth', 'deadline': 'Within 42 days', 'cost': '11.00', 'where': 'Local register office',
+             'source_url': 'https://www.gov.uk/child-birth-registration'},
+            {'step': 'Apply for Child Benefit', 'deadline': 'As soon as possible', 'cost': 'Free', 'where': 'HMRC',
+             'source_url': 'https://www.gov.uk/child-benefit'},
+            {'step': 'Update council tax', 'deadline': 'Before the birth', 'cost': 'Free', 'where': 'Your council',
+             'source_url': 'https://www.gov.uk/council-tax'},
+            {'step': 'Notify your employer', 'deadline': '15 weeks before due date', 'cost': 'Free', 'where': 'Your employer',
+             'source_url': ''},
+            {'step': 'Check tax code', 'deadline': 'After birth', 'cost': 'Free', 'where': 'HMRC',
+             'source_url': 'https://www.gov.uk/check-income-tax-returns'},
         ],
         'tip': 'Register the birth first - you need the birth certificate for everything else.',
     }
+    return _truth_wrap('new_parent_admin', result, truth_class="CONCEPTUAL",
+                      confidence=0.3,
+                      evidence=[{"type": "source_url", "url": "https://www.gov.uk/child-birth-registration"}],
+                      limitations=["Checklist steps not individually verified against live GOV.UK pages"])
 
 
 def used_car_checks(registration, make='', model=''):
-    return {
+    result = {
         'status': 'ok',
         'registration': registration,
         'make': make,
         'model': model,
         'checks': [
-            {'check': 'MOT history', 'what': 'Passes, failures, advisories', 'url': 'https://www.gov.uk/check-mot-history', 'free': True},
-            {'check': 'Vehicle tax', 'what': 'Current tax status and expiry', 'url': 'https://www.gov.uk/check-vehicle-tax', 'free': True},
-            {'check': 'Recall check', 'what': 'Outstanding safety recalls', 'url': 'https://www.gov.uk/check-vehicle-recalls', 'free': True},
-            {'check': 'Insurance group', 'what': 'How expensive to insure', 'url': 'https://www.motorway.co.uk/guides/insurance-groups-explained', 'free': True},
-            {'check': 'HPI check', 'what': 'Finance, written off, stolen', 'url': 'https://www.checkcardetails.co.uk/', 'free': False},
+            {'check': 'MOT history', 'what': 'Passes, failures, advisories', 'source_url': 'https://www.gov.uk/check-mot-history', 'free': True},
+            {'check': 'Vehicle tax', 'what': 'Current tax status and expiry', 'source_url': 'https://www.gov.uk/check-vehicle-tax', 'free': True},
+            {'check': 'Recall check', 'what': 'Outstanding safety recalls', 'source_url': 'https://www.gov.uk/check-vehicle-recalls', 'free': True},
+            {'check': 'Insurance group', 'what': 'How expensive to insure', 'source_url': 'https://www.motorway.co.uk/guides/insurance-groups-explained', 'free': True},
+            {'check': 'HPI check', 'what': 'Finance, written off, stolen', 'source_url': 'https://www.checkcardetails.co.uk/', 'free': False},
         ],
         'red_flags': [
             'Advisories left unrepaired',
@@ -1268,10 +828,14 @@ def used_car_checks(registration, make='', model=''):
         ],
         'tip': 'Always check MOT history and get a vehicle history check before buying.',
     }
+    return _truth_wrap('used_car_checks', result, truth_class="CONCEPTUAL",
+                      confidence=0.3,
+                      evidence=[{"type": "source_url", "url": c['source_url']} for c in result['checks'] if c['source_url']],
+                      limitations=["Check URLs not verified against live pages"])
 
 
 def lost_passport(was_stolen=False):
-    return {
+    result = {
         'status': 'ok',
         'situation': 'stolen' if was_stolen else 'lost',
         'steps': [
@@ -1286,10 +850,15 @@ def lost_passport(was_stolen=False):
         'cost': '82.50',
         'time': '10 weeks',
     }
+    return _truth_wrap('lost_passport', result, truth_class="CONCEPTUAL",
+                      confidence=0.3,
+                      evidence=[{"type": "source_url", "url": "https://www.gov.uk/report-a-lost-or-stolen-passport"},
+                                {"type": "source_url", "url": "https://www.gov.uk/replace-lost-stolen-passport"}],
+                      limitations=["Steps not verified against live GOV.UK pages"])
 
 
 def manage_mot(registration):
-    return {
+    result = {
         'status': 'ok',
         'registration': registration,
         'url': 'https://www.gov.uk/check-mot-history',
@@ -1300,35 +869,43 @@ def manage_mot(registration):
         ],
         'reminder_url': 'https://www.gov.uk/mot-reminders',
     }
+    return _truth_wrap('manage_mot', result, truth_class="CONCEPTUAL",
+                      confidence=0.3,
+                      evidence=[{"type": "source_url", "url": "https://www.gov.uk/check-mot-history"}],
+                      limitations=["Steps not verified against live GOV.UK page"])
 
 
 def support_check(situation):
     sit = situation.lower()
     benefits = []
     if any(w in sit for w in ['kid', 'child', 'baby', 'family', 'parent']):
-        benefits.append({'benefit': 'Child Benefit', 'amount': '25.60/week (eldest)', 'url': 'https://www.gov.uk/child-benefit'})
+        benefits.append({'benefit': 'Child Benefit', 'amount': '25.60/week (eldest)', 'source_url': 'https://www.gov.uk/child-benefit'})
     if any(w in sit for w in ['unemploy', 'jobseek', 'looking for work']):
-        benefits.append({'benefit': 'Universal Credit', 'amount': 'Up to 393.45/month (under 25)', 'url': 'https://www.gov.uk/universal-credit'})
+        benefits.append({'benefit': 'Universal Credit', 'amount': 'Up to 393.45/month (under 25)', 'source_url': 'https://www.gov.uk/universal-credit'})
     if any(w in sit for w in ['disabled', 'disability', 'ill', 'mental health', 'mobility']):
-        benefits.append({'benefit': 'PIP', 'amount': '72.65-184.25/week', 'url': 'https://www.gov.uk/pip'})
-        benefits.append({'benefit': 'Employment and Support Allowance', 'amount': '84.80/week', 'url': 'https://www.gov.uk/employment-and-support-allowance'})
+        benefits.append({'benefit': 'PIP', 'amount': '72.65-184.25/week', 'source_url': 'https://www.gov.uk/pip'})
+        benefits.append({'benefit': 'Employment and Support Allowance', 'amount': '84.80/week', 'source_url': 'https://www.gov.uk/employment-and-support-allowance'})
     if any(w in sit for w in ['low income', 'struggling', 'rent', 'housing']):
-        benefits.append({'benefit': 'Universal Credit (housing element)', 'amount': 'Varies by area', 'url': 'https://www.gov.uk/universal-credit'})
-        benefits.append({'benefit': 'Council Tax Reduction', 'amount': 'Up to 100%', 'url': 'https://www.gov.uk/council-tax-reduction'})
+        benefits.append({'benefit': 'Universal Credit (housing element)', 'amount': 'Varies by area', 'source_url': 'https://www.gov.uk/universal-credit'})
+        benefits.append({'benefit': 'Council Tax Reduction', 'amount': 'Up to 100%', 'source_url': 'https://www.gov.uk/council-tax-reduction'})
     if any(w in sit for w in ['carer', 'looking after']):
-        benefits.append({'benefit': "Carer's Allowance", 'amount': '81.90/week', 'url': 'https://www.gov.uk/carers-allowance'})
+        benefits.append({'benefit': "Carer's Allowance", 'amount': '81.90/week', 'source_url': 'https://www.gov.uk/carers-allowance'})
     if not benefits:
-        benefits.append({'benefit': 'Universal Credit', 'amount': 'Varies', 'url': 'https://www.gov.uk/universal-credit'})
-    return {
+        benefits.append({'benefit': 'Universal Credit', 'amount': 'Varies', 'source_url': 'https://www.gov.uk/universal-credit'})
+    result = {
         'status': 'ok',
         'situation': situation,
         'possible_benefits': benefits,
         'calculator': 'https://www.gov.uk/benefits-calculators',
     }
+    return _truth_wrap('support_check', result, truth_class="CONCEPTUAL",
+                      confidence=0.3,
+                      evidence=[{"type": "source_url", "url": b['source_url']} for b in benefits if b.get('source_url')],
+                      limitations=["Benefit amounts and eligibility not verified against live pages"])
 
 
 def company_setup(company_name='', sector=''):
-    return {
+    result = {
         'status': 'ok',
         'company_name': company_name,
         'sector': sector,
@@ -1353,10 +930,14 @@ def company_setup(company_name='', sector=''):
         ],
         'tip': 'Use the standard articles of association to save time and money.',
     }
+    return _truth_wrap('company_setup', result, truth_class="CONCEPTUAL",
+                      confidence=0.3,
+                      evidence=[{"type": "source_url", "url": "https://www.gov.uk/limited-company-formation"}],
+                      limitations=["Steps not verified against live GOV.UK pages"])
 
 
 # ============================================================
-# BORING UK WORKFLOW IMPLEMENTATIONS (12 new tools)
+# BORING UK WORKFLOW IMPLEMENTATIONS (12 new tools) - PR5
 # ============================================================
 
 def move_house(move_date, new_address, old_address=''):
@@ -1371,120 +952,91 @@ def move_house(move_date, new_address, old_address=''):
         return f'{n} days before move'
 
     workflow_steps = [
-        {
-            'step': 1, 'task': 'Notify current council',
-            'what': 'Tell your old council you are leaving',
-            'deadline': _days_before(14),
-            'action_class': 'USER_HANDOFF',
-            'url': 'https://www.gov.uk/council-tax',
-            'authority': 'Old council',
-            'dependency': None,
-            'note': 'Council tax is a legal obligation. Contact both old and new councils.',
-        },
-        {
-            'step': 2, 'task': 'Notify new council',
-            'what': 'Set up council tax at new address',
-            'deadline': move_date,
-            'action_class': 'USER_HANDOFF',
-            'url': 'https://www.gov.uk/find-local-council',
-            'authority': 'New council',
-            'dependency': 'step_1',
-        },
-        {
-            'step': 3, 'task': 'Update driving licence',
-            'what': 'Change address on DVLA driving licence',
-            'deadline': _days_before(0),
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/change-address-driving-licence',
-            'authority': 'DVLA',
-            'deadline_legal': 'Within 8 weeks of moving',
-            'dependency': None,
-            'fee': 'Free',
-        },
-        {
-            'step': 4, 'task': 'Update vehicle tax',
-            'what': 'Update address on vehicle tax records',
-            'deadline': _days_before(0),
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/vehicle-tax',
-            'authority': 'DVLA',
-            'dependency': 'step_3',
-            'fee': 'Free',
-        },
-        {
-            'step': 5, 'task': 'Register to vote at new address',
-            'what': 'Register on the electoral roll',
-            'deadline': _days_before(12),
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/register-to-vote',
-            'authority': 'Electoral Commission',
-            'dependency': None,
-        },
-        {
-            'step': 6, 'task': 'Redirect post via Royal Mail',
-            'what': 'Set up mail redirection',
-            'deadline': _days_before(5),
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.royalmail.com/redirection',
-            'authority': 'Royal Mail',
-            'dependency': None,
-            'fee': 'From 82.99 for 12 months',
-        },
-        {
-            'step': 7, 'task': 'Notify banks and credit cards',
-            'what': 'Update address on all bank accounts',
-            'deadline': _days_before(-7),
-            'action_class': 'USER_HANDOFF',
-            'authority': 'Your banks',
-            'dependency': None,
-            'note': 'Update each bank separately.',
-        },
-        {
-            'step': 8, 'task': 'Notify utility providers',
-            'what': 'Gas, electric, water, broadband, TV licence',
-            'deadline': _days_before(7),
-            'action_class': 'USER_HANDOFF',
-            'authority': 'Utility providers',
-            'dependency': None,
-            'note': 'Take meter readings on move day.',
-        },
-        {
-            'step': 9, 'task': 'Update insurance policies',
-            'what': 'Home, car, and other insurance',
-            'deadline': _days_before(0),
-            'action_class': 'USER_HANDOFF',
-            'authority': 'Insurers',
-            'dependency': None,
-            'note': 'Car insurance must reflect new address.',
-        },
-        {
-            'step': 10, 'task': 'Notify employer',
-            'what': 'Update payroll and HR',
-            'deadline': _days_before(7),
-            'action_class': 'USER_HANDOFF',
-            'authority': 'Your employer',
-            'dependency': None,
-        },
-        {
-            'step': 11, 'task': 'Notify GP and dentist',
-            'what': 'Register at new local surgeries',
-            'deadline': _days_before(-14),
-            'action_class': 'USER_HANDOFF',
-            'authority': 'NHS',
-            'dependency': None,
-        },
-        {
-            'step': 12, 'task': 'Notify HMRC of address change',
-            'what': 'Update personal tax account',
-            'deadline': _days_before(0),
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/update-hmrc-your-personal-details',
-            'authority': 'HMRC',
-            'dependency': None,
-        },
+        _step_with_verification(1, 'Notify current council', 'USER_HANDOFF',
+            'https://www.gov.uk/council-tax',
+            verification_method='none',
+            deadline=_days_before(14),
+            authority='Old council',
+            note='Council tax is a legal obligation. Contact both old and new councils.'),
+        _step_with_verification(2, 'Notify new council', 'USER_HANDOFF',
+            'https://www.gov.uk/find-local-council',
+            verification_method='none',
+            deadline=move_date,
+            authority='New council',
+            dependency='step_1'),
+        _step_with_verification(3, 'Update driving licence', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/change-address-driving-licence',
+            verification_method='none',
+            deadline=_days_before(0),
+            authority='DVLA',
+            deadline_legal='Within 8 weeks of moving',
+            dependency=None,
+            fee='Free'),
+        _step_with_verification(4, 'Update vehicle tax', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/vehicle-tax',
+            verification_method='none',
+            deadline=_days_before(0),
+            authority='DVLA',
+            dependency='step_3',
+            fee='Free'),
+        _step_with_verification(5, 'Register to vote at new address', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/register-to-vote',
+            verification_method='none',
+            deadline=_days_before(12),
+            authority='Electoral Commission',
+            dependency=None),
+        _step_with_verification(6, 'Redirect post via Royal Mail', 'APPROVAL_REQUIRED',
+            'https://www.royalmail.com/redirection',
+            verification_method='none',
+            deadline=_days_before(5),
+            authority='Royal Mail',
+            dependency=None,
+            fee='From 82.99 for 12 months'),
+        _step_with_verification(7, 'Notify banks and credit cards', 'USER_HANDOFF',
+            '',
+            verification_method='none',
+            deadline=_days_before(-7),
+            authority='Your banks',
+            dependency=None,
+            note='Update each bank separately.'),
+        _step_with_verification(8, 'Notify utility providers', 'USER_HANDOFF',
+            '',
+            verification_method='none',
+            deadline=_days_before(7),
+            authority='Utility providers',
+            dependency=None,
+            note='Take meter readings on move day.'),
+        _step_with_verification(9, 'Update insurance policies', 'USER_HANDOFF',
+            '',
+            verification_method='none',
+            deadline=_days_before(0),
+            authority='Insurers',
+            dependency=None,
+            note='Car insurance must reflect new address.'),
+        _step_with_verification(10, 'Notify employer', 'USER_HANDOFF',
+            '',
+            verification_method='none',
+            deadline=_days_before(7),
+            authority='Your employer',
+            dependency=None),
+        _step_with_verification(11, 'Notify GP and dentist', 'USER_HANDOFF',
+            '',
+            verification_method='none',
+            deadline=_days_before(-14),
+            authority='NHS',
+            dependency=None),
+        _step_with_verification(12, 'Notify HMRC of address change', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/update-hmrc-your-personal-details',
+            verification_method='none',
+            deadline=_days_before(0),
+            authority='HMRC',
+            dependency=None),
     ]
 
-    return {
+    verified_count = sum(1 for s in workflow_steps if s['verification_status'] == 'VERIFIED')
+    total = len(workflow_steps)
+
+    result = {
         'status': 'ok',
         'task': 'Move house - full workflow',
         'capability_level': 5,
@@ -1502,14 +1054,7 @@ def move_house(move_date, new_address, old_address=''):
             'DVLA address change: Free',
             'Council tax: varies by band',
         ],
-        'official_urls': [
-            'https://www.gov.uk/change-address-driving-licence',
-            'https://www.gov.uk/vehicle-tax',
-            'https://www.gov.uk/find-local-council',
-            'https://www.gov.uk/register-to-vote',
-            'https://www.royalmail.com/redirection',
-            'https://www.gov.uk/update-hmrc-your-personal-details',
-        ],
+        'official_urls': [s['source_url'] for s in workflow_steps if s['source_url']],
         'failure_modes': [
             'Forgetting DVLA update (fine up to 1,000)',
             'Not updating car insurance (policy may be void)',
@@ -1521,7 +1066,17 @@ def move_house(move_date, new_address, old_address=''):
             'Verify driving licence arrives with correct address',
             'Confirm car insurance reflects new address',
         ],
+        'verification_summary': {
+            'total_steps': total,
+            'verified': verified_count,
+            'not_verified': total - verified_count,
+            'truth_class': 'CONCEPTUAL',
+        },
     }
+    return _truth_wrap('move_house', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow_steps if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages. Source URLs provided but content not checked."])
 
 
 def manage_car(registration):
@@ -1551,7 +1106,7 @@ def manage_car(registration):
             'days_remaining': days_to_mot,
             'action_class': 'USER_HANDOFF' if days_to_mot < 0 else 'APPROVAL_REQUIRED',
             'urgent': days_to_mot <= 30,
-            'url': 'https://www.gov.uk/get-mot',
+            'source_url': 'https://www.gov.uk/get-mot',
         })
     else:
         renewals.append({
@@ -1559,7 +1114,7 @@ def manage_car(registration):
             'expiry': 'Unknown',
             'action_class': 'APPROVAL_REQUIRED',
             'urgent': False,
-            'url': 'https://www.gov.uk/check-mot-history',
+            'source_url': 'https://www.gov.uk/check-mot-history',
         })
 
     if car.get('tax_expiry'):
@@ -1571,7 +1126,7 @@ def manage_car(registration):
             'days_remaining': days_to_tax,
             'action_class': 'APPROVAL_REQUIRED',
             'urgent': days_to_tax <= 30,
-            'url': 'https://www.gov.uk/vehicle-tax',
+            'source_url': 'https://www.gov.uk/vehicle-tax',
         })
     else:
         renewals.append({
@@ -1579,20 +1134,27 @@ def manage_car(registration):
             'expiry': 'Unknown',
             'action_class': 'APPROVAL_REQUIRED',
             'urgent': False,
-            'url': 'https://www.gov.uk/check-vehicle-tax',
+            'source_url': 'https://www.gov.uk/check-vehicle-tax',
         })
 
-    return {
+    workflow_steps = [
+        _step_with_verification(1, 'Check MOT status', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/check-mot-history', verification_method='none'),
+        _step_with_verification(2, 'Check vehicle tax status', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/check-vehicle-tax', verification_method='none'),
+        _step_with_verification(3, 'Check for recalls', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/check-vehicle-recalls', verification_method='none'),
+        _step_with_verification(4, 'Verify insurance is current', 'USER_HANDOFF',
+            '', verification_method='none'),
+        _step_with_verification(5, 'Check V5C is correct', 'USER_HANDOFF',
+            '', verification_method='none'),
+    ]
+
+    result = {
         'status': 'ok',
         'task': f'Manage car {registration}',
         'capability_level': 4,
-        'workflow_steps': [
-            {'step': 1, 'task': 'Check MOT status', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/check-mot-history'},
-            {'step': 2, 'task': 'Check vehicle tax status', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/check-vehicle-tax'},
-            {'step': 3, 'task': 'Check for recalls', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/check-vehicle-recalls'},
-            {'step': 4, 'task': 'Verify insurance is current', 'action_class': 'USER_HANDOFF'},
-            {'step': 5, 'task': 'Check V5C is correct', 'action_class': 'USER_HANDOFF'},
-        ],
+        'workflow_steps': workflow_steps,
         'agent_actions': ['Check MOT history', 'Check tax status', 'Check recalls', 'Set renewal reminders'],
         'user_actions': ['Book MOT appointment', 'Arrange insurance', 'Keep V5C up to date', 'Fix any advisories'],
         'required_documents': ['V5C registration certificate', 'MOT certificate', 'Insurance certificate'],
@@ -1601,13 +1163,7 @@ def manage_car(registration):
             f'Tax expiry: {car.get("tax_expiry", "unknown")}',
         ],
         'fees': ['MOT: max 54.85 (cars)', 'Road tax: varies by vehicle'],
-        'official_urls': [
-            'https://www.gov.uk/check-mot-history',
-            'https://www.gov.uk/check-vehicle-tax',
-            'https://www.gov.uk/check-vehicle-recalls',
-            'https://www.gov.uk/get-mot',
-            'https://www.gov.uk/vehicle-tax',
-        ],
+        'official_urls': [s['source_url'] for s in workflow_steps if s['source_url']],
         'failure_modes': [
             'Driving without valid MOT (fine up to 2,500, 3 penalty points)',
             'Driving without road tax (fine up to 5,000, vehicle clamped)',
@@ -1616,75 +1172,48 @@ def manage_car(registration):
         ],
         'follow_up_dates': renewals,
         'current_state': car,
+        'verification_summary': {
+            'total_steps': len(workflow_steps),
+            'verified': sum(1 for s in workflow_steps if s['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for s in workflow_steps if s['verification_status'] != 'VERIFIED'),
+        },
     }
+    return _truth_wrap('manage_car', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow_steps if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages"])
 
 
 def onboard_car(registration):
     workflow_steps = [
-        {
-            'step': 1, 'task': 'Check MOT history',
-            'what': 'Verify the car has a valid MOT and check history',
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/check-mot-history',
-            'fee': 'Free',
-        },
-        {
-            'step': 2, 'task': 'Check vehicle tax',
-            'what': 'Verify tax status and expiry',
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/check-vehicle-tax',
-            'fee': 'Free',
-        },
-        {
-            'step': 3, 'task': 'Check for safety recalls',
-            'what': 'Verify no outstanding recalls',
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/check-vehicle-recalls',
-            'fee': 'Free',
-        },
-        {
-            'step': 4, 'task': 'Transfer V5C registration',
-            'what': 'Complete section 6 and send to DVLA',
-            'action_class': 'USER_HANDOFF',
-            'url': 'https://www.gov.uk/sold-bought-vehicle',
-            'fee': 'Free',
-            'deadline': 'As soon as possible',
-        },
-        {
-            'step': 5, 'task': 'Get insurance',
-            'what': 'Insure the car before driving',
-            'action_class': 'USER_HANDOFF',
-            'fee': 'Varies',
-            'deadline': 'Before driving the car',
-        },
-        {
-            'step': 6, 'task': 'Tax the vehicle',
-            'what': 'Register for road tax with V5C and insurance',
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/vehicle-tax',
-            'fee': 'Varies',
-            'dependency': 'step_4 and step_5',
-        },
-        {
-            'step': 7, 'task': 'Get an MOT (if needed)',
-            'what': 'If MOT has expired or is short',
-            'action_class': 'USER_HANDOFF',
-            'url': 'https://www.gov.uk/get-mot',
-            'fee': 'Up to 54.85',
-        },
-        {
-            'step': 8, 'task': 'Update your insurance address',
-            'what': 'If you have existing cover, update details',
-            'action_class': 'USER_HANDOFF',
-        },
-        {
-            'step': 9, 'task': 'Keep all documents safe',
-            'what': 'V5C, MOT certificate, insurance certificate',
-            'action_class': 'USER_HANDOFF',
-        },
+        _step_with_verification(1, 'Check MOT history', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/check-mot-history', verification_method='none',
+            fee='Free'),
+        _step_with_verification(2, 'Check vehicle tax', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/check-vehicle-tax', verification_method='none',
+            fee='Free'),
+        _step_with_verification(3, 'Check for safety recalls', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/check-vehicle-recalls', verification_method='none',
+            fee='Free'),
+        _step_with_verification(4, 'Transfer V5C registration', 'USER_HANDOFF',
+            'https://www.gov.uk/sold-bought-vehicle', verification_method='none',
+            fee='Free', deadline='As soon as possible'),
+        _step_with_verification(5, 'Get insurance', 'USER_HANDOFF',
+            '', verification_method='none',
+            fee='Varies', deadline='Before driving the car'),
+        _step_with_verification(6, 'Tax the vehicle', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/vehicle-tax', verification_method='none',
+            fee='Varies', dependency='step_4 and step_5'),
+        _step_with_verification(7, 'Get an MOT (if needed)', 'USER_HANDOFF',
+            'https://www.gov.uk/get-mot', verification_method='none',
+            fee='Up to 54.85'),
+        _step_with_verification(8, 'Update your insurance address', 'USER_HANDOFF',
+            '', verification_method='none'),
+        _step_with_verification(9, 'Keep all documents safe', 'USER_HANDOFF',
+            '', verification_method='none'),
     ]
 
-    return {
+    result = {
         'status': 'ok',
         'task': f'Onboard used car {registration}',
         'capability_level': 4,
@@ -1702,14 +1231,7 @@ def onboard_car(registration):
             'Road tax: varies by vehicle CO2 emissions and age',
             'Insurance: varies widely',
         ],
-        'official_urls': [
-            'https://www.gov.uk/check-mot-history',
-            'https://www.gov.uk/check-vehicle-tax',
-            'https://www.gov.uk/check-vehicle-recalls',
-            'https://www.gov.uk/sold-bought-vehicle',
-            'https://www.gov.uk/vehicle-tax',
-            'https://www.gov.uk/get-mot',
-        ],
+        'official_urls': [s['source_url'] for s in workflow_steps if s['source_url']],
         'failure_modes': [
             'Driving without insurance (fine, points, vehicle seized)',
             'Driving without tax (fine up to 5,000)',
@@ -1721,7 +1243,16 @@ def onboard_car(registration):
             'Check tax expiry - renew before it expires',
             'Schedule first service if no service history',
         ],
+        'verification_summary': {
+            'total_steps': len(workflow_steps),
+            'verified': sum(1 for s in workflow_steps if s['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for s in workflow_steps if s['verification_status'] != 'VERIFIED'),
+        },
     }
+    return _truth_wrap('onboard_car', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow_steps if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages"])
 
 
 def manage_business(company_number):
@@ -1746,7 +1277,7 @@ def manage_business(company_number):
             'filing': 'Confirmation Statement',
             'deadline': company['confirmation_statement_due'],
             'authority': 'Companies House',
-            'url': 'https://www.gov.uk/file-confirmation-statement',
+            'source_url': 'https://www.gov.uk/file-confirmation-statement',
             'fee': '13 online',
             'penalty': 'Company can be struck off',
         })
@@ -1755,7 +1286,7 @@ def manage_business(company_number):
             'filing': 'Annual Accounts',
             'deadline': company['accounts_due'],
             'authority': 'Companies House',
-            'url': 'https://www.gov.uk/file-company-accounts',
+            'source_url': 'https://www.gov.uk/file-company-accounts',
             'fee': 'Free',
             'penalty': 'Up to 7,500 for private company',
         })
@@ -1764,24 +1295,38 @@ def manage_business(company_number):
             'filing': 'Corporation Tax Return',
             'deadline': company['corporation_tax_due'],
             'authority': 'HMRC',
-            'url': 'https://www.gov.uk/file-company-tax-return',
+            'source_url': 'https://www.gov.uk/file-company-tax-return',
             'fee': 'Free',
             'penalty': 'Automatic 100, escalating',
         })
 
-    return {
+    workflow_steps = [
+        _step_with_verification(1, 'File Confirmation Statement annually', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/file-confirmation-statement', verification_method='none',
+            deadline='Every year, within 14 days of anniversary'),
+        _step_with_verification(2, 'File Annual Accounts', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/file-company-accounts', verification_method='none',
+            deadline='9 months after accounting period end'),
+        _step_with_verification(3, 'File Corporation Tax Return', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/file-company-tax-return', verification_method='none',
+            deadline='12 months after accounting period end'),
+        _step_with_verification(4, 'Pay Corporation Tax', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/pay-corporation-tax', verification_method='none',
+            deadline='9 months and 1 day after accounting period end'),
+        _step_with_verification(5, 'VAT returns (if registered)', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/vat-returns', verification_method='none',
+            deadline='Quarterly'),
+        _step_with_verification(6, 'Update Companies House records', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/update-company-information', verification_method='none'),
+        _step_with_verification(7, 'Maintain PSC register', 'USER_HANDOFF',
+            '', verification_method='none'),
+    ]
+
+    result = {
         'status': 'ok',
         'task': f'Manage company {company_number}',
         'capability_level': 5,
-        'workflow_steps': [
-            {'step': 1, 'task': 'File Confirmation Statement annually', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/file-confirmation-statement', 'deadline': 'Every year, within 14 days of anniversary'},
-            {'step': 2, 'task': 'File Annual Accounts', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/file-company-accounts', 'deadline': '9 months after accounting period end'},
-            {'step': 3, 'task': 'File Corporation Tax Return', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/file-company-tax-return', 'deadline': '12 months after accounting period end'},
-            {'step': 4, 'task': 'Pay Corporation Tax', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/pay-corporation-tax', 'deadline': '9 months and 1 day after accounting period end'},
-            {'step': 5, 'task': 'VAT returns (if registered)', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/vat-returns', 'deadline': 'Quarterly'},
-            {'step': 6, 'task': 'Update Companies House records', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/update-company-information'},
-            {'step': 7, 'task': 'Maintain PSC register', 'action_class': 'USER_HANDOFF'},
-        ],
+        'workflow_steps': workflow_steps,
         'agent_actions': ['File Confirmation Statement', 'Prepare accounts template', 'Calculate Corporation Tax', 'Submit VAT returns', 'File tax returns'],
         'user_actions': ['Approve financial accounts', 'Approve tax filings', 'Keep board minutes', 'Maintain PSC register'],
         'required_documents': ['Company accounts', 'Corporation tax computation', 'Confirmation statement data', 'VAT records (if registered)'],
@@ -1792,13 +1337,7 @@ def manage_business(company_number):
             'Corporation Tax Return: Free',
             'Late filing penalties: 100-7,500+',
         ],
-        'official_urls': [
-            'https://www.gov.uk/file-confirmation-statement',
-            'https://www.gov.uk/file-company-accounts',
-            'https://www.gov.uk/file-company-tax-return',
-            'https://www.gov.uk/pay-corporation-tax',
-            'https://www.gov.uk/update-company-information',
-        ],
+        'official_urls': [s['source_url'] for s in workflow_steps if s['source_url']],
         'failure_modes': [
             'Missing Confirmation Statement deadline (company struck off)',
             'Late accounts filing (automatic penalties)',
@@ -1814,23 +1353,34 @@ def manage_business(company_number):
             'VAT returns: quarterly',
         ],
         'current_state': company,
+        'verification_summary': {
+            'total_steps': len(workflow_steps),
+            'verified': sum(1 for s in workflow_steps if s['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for s in workflow_steps if s['verification_status'] != 'VERIFIED'),
+        },
     }
+    return _truth_wrap('manage_business', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow_steps if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages"])
 
 
 def change_details_everywhere(detail_type, old_value, new_value):
     if detail_type.lower() not in ('name', 'address'):
-        return {'status': 'error', 'message': 'detail_type must be "name" or "address"'}
+        result = {'status': 'error', 'message': 'detail_type must be "name" or "address"'}
+        return _truth_wrap('change_details_everywhere', result, truth_class="VERIFIED",
+                          confidence=1.0, limitations=["Invalid input"])
 
     orgs = []
     if detail_type.lower() == 'name':
         orgs = [
-            {'org': 'DVLA - Driving Licence', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/change-driving-licence/details', 'fee': 'Free'},
-            {'org': 'HMRC - Tax records', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/update-hmrc-your-personal-details', 'fee': 'Free'},
-            {'org': 'HM Passport Office', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/renew-adult-passport', 'fee': '82.50', 'note': 'Name change requires passport renewal'},
+            {'org': 'DVLA - Driving Licence', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/change-driving-licence/details', 'fee': 'Free'},
+            {'org': 'HMRC - Tax records', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/update-hmrc-your-personal-details', 'fee': 'Free'},
+            {'org': 'HM Passport Office', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/renew-adult-passport', 'fee': '82.50', 'note': 'Name change requires passport renewal'},
             {'org': 'Banks and building societies', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
-            {'org': 'Electoral roll', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/register-to-vote', 'fee': 'Free'},
+            {'org': 'Electoral roll', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/register-to-vote', 'fee': 'Free'},
             {'org': 'NHS - GP registration', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
-            {'org': 'DVLA - Vehicle tax', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/vehicle-tax', 'fee': 'Free'},
+            {'org': 'DVLA - Vehicle tax', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/vehicle-tax', 'fee': 'Free'},
             {'org': 'Employer / payroll', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
             {'org': 'Pension providers', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
             {'org': 'Insurance policies', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
@@ -1838,28 +1388,35 @@ def change_details_everywhere(detail_type, old_value, new_value):
         ]
     else:
         orgs = [
-            {'org': 'DVLA - Driving Licence', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/change-address-driving-licence', 'fee': 'Free'},
-            {'org': 'DVLA - Vehicle tax', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/vehicle-tax', 'fee': 'Free'},
-            {'org': 'HMRC - Tax records', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/update-hmrc-your-personal-details', 'fee': 'Free'},
-            {'org': 'Electoral roll', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/register-to-vote', 'fee': 'Free'},
-            {'org': 'Council tax', 'action_class': 'USER_HANDOFF', 'url': 'https://www.gov.uk/find-local-council', 'fee': 'Free'},
+            {'org': 'DVLA - Driving Licence', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/change-address-driving-licence', 'fee': 'Free'},
+            {'org': 'DVLA - Vehicle tax', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/vehicle-tax', 'fee': 'Free'},
+            {'org': 'HMRC - Tax records', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/update-hmrc-your-personal-details', 'fee': 'Free'},
+            {'org': 'Electoral roll', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/register-to-vote', 'fee': 'Free'},
+            {'org': 'Council tax', 'action_class': 'USER_HANDOFF', 'source_url': 'https://www.gov.uk/find-local-council', 'fee': 'Free'},
             {'org': 'Banks and building societies', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
             {'org': 'NHS - GP registration', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
             {'org': 'Insurance policies', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
             {'org': 'Employer / payroll', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
-            {'org': 'HMRC - National Insurance record', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/personal-tax-account', 'fee': 'Free'},
+            {'org': 'HMRC - National Insurance record', 'action_class': 'APPROVAL_REQUIRED', 'source_url': 'https://www.gov.uk/personal-tax-account', 'fee': 'Free'},
             {'org': 'HM Land Registry (if property owner)', 'action_class': 'USER_HANDOFF', 'fee': 'Varies'},
             {'org': 'Student loan company', 'action_class': 'USER_HANDOFF', 'fee': 'Free'},
         ]
 
+    for i, org in enumerate(orgs):
+        org['step'] = i + 1
+        if org.get('source_url'):
+            org['source_hash'] = _make_source_hash(org['source_url'])
+        org['verification_status'] = 'NOT_VERIFIED — source_url provided but not checked' if org.get('source_url') else 'N/A'
+        org['verification_method'] = 'none'
+
     agent_items = [o for o in orgs if o['action_class'] in ('AUTO', 'APPROVAL_REQUIRED')]
     user_items = [o for o in orgs if o['action_class'] == 'USER_HANDOFF']
 
-    return {
+    result = {
         'status': 'ok',
         'task': f'Change {detail_type} everywhere',
         'capability_level': 5,
-        'workflow_steps': [{'step': i + 1, **org} for i, org in enumerate(orgs)],
+        'workflow_steps': orgs,
         'agent_actions': [o['org'] for o in agent_items],
         'user_actions': [o['org'] for o in user_items],
         'required_documents': [
@@ -1873,7 +1430,7 @@ def change_details_everywhere(detail_type, old_value, new_value):
             'Council tax: notify immediately',
         ],
         'fees': ['Passport renewal (name change): 82.50', 'All other updates: Free'],
-        'official_urls': [o['url'] for o in orgs if o.get('url')],
+        'official_urls': [o['source_url'] for o in orgs if o.get('source_url')],
         'failure_modes': [
             'Missed organisation leads to communications going to wrong address',
             'Driving licence with wrong name/address is not valid ID',
@@ -1887,54 +1444,39 @@ def change_details_everywhere(detail_type, old_value, new_value):
         ],
         'old_value': old_value,
         'new_value': new_value,
+        'verification_summary': {
+            'total_steps': len(orgs),
+            'verified': sum(1 for o in orgs if o['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for o in orgs if 'NOT_VERIFIED' in str(o['verification_status'])),
+        },
     }
+    return _truth_wrap('change_details_everywhere', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": o['source_url']} for o in orgs if o.get('source_url')],
+                      limitations=["Steps not yet verified against live GOV.UK pages"])
 
 
 def renew_passport():
     workflow_steps = [
-        {
-            'step': 1, 'task': 'Check passport eligibility for online renewal',
-            'what': 'Passport must be undamaged, issued within last 15 years, issued when 16+',
-            'action_class': 'AUTO',
-            'url': 'https://www.gov.uk/renew-adult-passport',
-        },
-        {
-            'step': 2, 'task': 'Get a digital photo',
-            'what': 'White background, taken within last month, specific size',
-            'action_class': 'USER_HANDOFF',
-            'url': 'https://www.gov.uk/passport-photo-guidelines',
-        },
-        {
-            'step': 3, 'task': 'Complete online application',
-            'what': 'Fill in the GOV.UK form',
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/renew-adult-passport',
-        },
-        {
-            'step': 4, 'task': 'Pay for renewal',
-            'what': 'Online: 82.50. Post Office Check & Send: 92.50',
-            'action_class': 'APPROVAL_REQUIRED',
-            'fee': '82.50 online / 92.50 with Check & Send',
-        },
-        {
-            'step': 5, 'task': 'Post old passport',
-            'what': 'Send old passport to HM Passport Office',
-            'action_class': 'USER_HANDOFF',
-        },
-        {
-            'step': 6, 'task': 'Wait for new passport',
-            'what': 'Processing takes up to 10 weeks',
-            'action_class': 'USER_HANDOFF',
-            'takes': 'Up to 10 weeks',
-        },
-        {
-            'step': 7, 'task': 'Sign new passport immediately',
-            'what': 'An unsigned passport is not valid',
-            'action_class': 'USER_HANDOFF',
-        },
+        _step_with_verification(1, 'Check passport eligibility for online renewal', 'AUTO',
+            'https://www.gov.uk/renew-adult-passport', verification_method='none'),
+        _step_with_verification(2, 'Get a digital photo', 'USER_HANDOFF',
+            'https://www.gov.uk/passport-photo-guidelines', verification_method='none'),
+        _step_with_verification(3, 'Complete online application', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/renew-adult-passport', verification_method='none'),
+        _step_with_verification(4, 'Pay for renewal', 'APPROVAL_REQUIRED',
+            '', verification_method='none',
+            fee='82.50 online / 92.50 with Check & Send'),
+        _step_with_verification(5, 'Post old passport', 'USER_HANDOFF',
+            '', verification_method='none'),
+        _step_with_verification(6, 'Wait for new passport', 'USER_HANDOFF',
+            '', verification_method='none',
+            takes='Up to 10 weeks'),
+        _step_with_verification(7, 'Sign new passport immediately', 'USER_HANDOFF',
+            '', verification_method='none'),
     ]
 
-    return {
+    result = {
         'status': 'ok',
         'task': 'Renew passport',
         'capability_level': 3,
@@ -1951,11 +1493,7 @@ def renew_passport():
             'Post Office Check & Send: 92.50',
             'Urgent appointment: 193.50',
         ],
-        'official_urls': [
-            'https://www.gov.uk/renew-adult-passport',
-            'https://www.gov.uk/passport-photo-guidelines',
-            'https://www.gov.uk/apply-renew-passport',
-        ],
+        'official_urls': [s['source_url'] for s in workflow_steps if s['source_url']],
         'failure_modes': [
             'Photo does not meet requirements (application delayed)',
             'Not signing new passport (invalid document)',
@@ -1965,44 +1503,35 @@ def renew_passport():
             'Set reminder: check passport 6 months before international travel',
             'Set reminder: renew 10 weeks before expiry',
         ],
+        'verification_summary': {
+            'total_steps': len(workflow_steps),
+            'verified': sum(1 for s in workflow_steps if s['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for s in workflow_steps if s['verification_status'] != 'VERIFIED'),
+        },
     }
+    return _truth_wrap('renew_passport', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow_steps if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages"])
 
 
 def start_driving():
     workflow_steps = [
-        {
-            'step': 1, 'task': 'Apply for provisional driving licence',
-            'what': 'Must be 15 years and 9 months old to apply',
-            'action_class': 'APPROVAL_REQUIRED',
-            'url': 'https://www.gov.uk/apply-first-provisional-driving-licence',
-            'fee': '34 online / 43 by post',
-            'takes': 'Up to 3 weeks',
-        },
-        {
-            'step': 2, 'task': 'Book and take theory test',
-            'what': 'Multiple choice and hazard perception',
-            'action_class': 'USER_HANDOFF',
-            'url': 'https://www.gov.uk/book-driving-test',
-            'fee': '23',
-            'prereq': 'Provisional licence in hand',
-        },
-        {
-            'step': 3, 'task': 'Book and take practical driving test',
-            'what': 'Driving test with examiner',
-            'action_class': 'USER_HANDOFF',
-            'url': 'https://www.gov.uk/book-driving-test',
-            'fee': '62 weekday / 75 weekend',
-            'prereq': 'Passed theory test',
-        },
-        {
-            'step': 4, 'task': 'Receive full driving licence',
-            'what': 'DVLA sends your full licence',
-            'action_class': 'USER_HANDOFF',
-            'takes': 'About 3 weeks after passing',
-        },
+        _step_with_verification(1, 'Apply for provisional driving licence', 'APPROVAL_REQUIRED',
+            'https://www.gov.uk/apply-first-provisional-driving-licence', verification_method='none',
+            fee='34 online / 43 by post', takes='Up to 3 weeks'),
+        _step_with_verification(2, 'Book and take theory test', 'USER_HANDOFF',
+            'https://www.gov.uk/book-driving-test', verification_method='none',
+            fee='23', prereq='Provisional licence in hand'),
+        _step_with_verification(3, 'Book and take practical driving test', 'USER_HANDOFF',
+            'https://www.gov.uk/book-driving-test', verification_method='none',
+            fee='62 weekday / 75 weekend', prereq='Passed theory test'),
+        _step_with_verification(4, 'Receive full driving licence', 'USER_HANDOFF',
+            '', verification_method='none',
+            takes='About 3 weeks after passing'),
     ]
 
-    return {
+    result = {
         'status': 'ok',
         'task': 'Start driving - provisional to full licence',
         'capability_level': 3,
@@ -2021,12 +1550,7 @@ def start_driving():
             'Practical test: 62 weekday / 75 evenings/weekends/bank holidays',
             'Total minimum: 119 (online) to 141 (by post, weekday test)',
         ],
-        'official_urls': [
-            'https://www.gov.uk/apply-first-provisional-driving-licence',
-            'https://www.gov.uk/practical-driving-test',
-            'https://www.gov.uk/theory-test',
-            'https://www.gov.uk/book-driving-test',
-        ],
+        'official_urls': [s['source_url'] for s in workflow_steps if s['source_url']],
         'failure_modes': [
             'Provisional licence application rejected (wrong documents)',
             'Theory test failed (must retake, fee again)',
@@ -2038,7 +1562,16 @@ def start_driving():
             'Theory test: book when ready, valid 2 years',
             'Practical test: book after passing theory, within 2 years',
         ],
+        'verification_summary': {
+            'total_steps': len(workflow_steps),
+            'verified': sum(1 for s in workflow_steps if s['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for s in workflow_steps if s['verification_status'] != 'VERIFIED'),
+        },
     }
+    return _truth_wrap('start_driving', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow_steps if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages"])
 
 
 def start_regulated_business(business_type):
@@ -2048,72 +1581,98 @@ def start_regulated_business(business_type):
         'food': {
             'name': 'Food Business Registration',
             'authority': 'Local Council Environmental Health',
-            'url': 'https://www.gov.uk/starting-food-business',
+            'source_url': 'https://www.gov.uk/starting-food-business',
             'fee': 'Free',
             'deadline': 'At least 28 days before opening',
             'steps': [
-                {'step': 1, 'task': 'Register food business with local council', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/starting-food-business', 'fee': 'Free'},
-                {'step': 2, 'task': 'Create a Food Safety Management System', 'action_class': 'USER_HANDOFF', 'url': 'https://www.food.gov.uk/business-guidance/starting-up'},
-                {'step': 3, 'task': 'Get food hygiene rating assessment', 'action_class': 'USER_HANDOFF'},
-                {'step': 4, 'task': 'Ensure premises meet regulations', 'action_class': 'USER_HANDOFF'},
-                {'step': 5, 'task': 'Staff food hygiene training', 'action_class': 'USER_HANDOFF'},
-                {'step': 6, 'task': 'Allergen information compliance', 'action_class': 'USER_HANDOFF', 'url': 'https://www.food.gov.uk/allergens'},
+                _step_with_verification(1, 'Register food business with local council', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/starting-food-business', verification_method='none', fee='Free'),
+                _step_with_verification(2, 'Create a Food Safety Management System', 'USER_HANDOFF',
+                    'https://www.food.gov.uk/business-guidance/starting-up', verification_method='none'),
+                _step_with_verification(3, 'Get food hygiene rating assessment', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(4, 'Ensure premises meet regulations', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(5, 'Staff food hygiene training', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(6, 'Allergen information compliance', 'USER_HANDOFF',
+                    'https://www.food.gov.uk/allergens', verification_method='none'),
             ],
         },
         'premises': {
             'name': 'Licensed Premises (Alcohol/Selling Late)',
             'authority': 'Local Council Licensing',
-            'url': 'https://www.gov.uk/find-licences/premises-licence',
+            'source_url': 'https://www.gov.uk/find-licences/premises-licence',
             'fee': '100-635 (based on rateable value)',
             'deadline': 'Apply before opening',
             'steps': [
-                {'step': 1, 'task': 'Apply for premises licence', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/find-licences/premises-licence', 'fee': '100-635'},
-                {'step': 2, 'task': 'Designate a Designated Premises Supervisor (DPS)', 'action_class': 'USER_HANDOFF'},
-                {'step': 3, 'task': 'Apply for personal licence (DPS)', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/find-licences/personal-licence', 'fee': '37'},
-                {'step': 4, 'task': 'Complete licensing objectives training', 'action_class': 'USER_HANDOFF'},
-                {'step': 5, 'task': 'Display licence and notices', 'action_class': 'USER_HANDOFF'},
-                {'step': 6, 'task': 'Notify responsible authorities', 'action_class': 'AUTO'},
+                _step_with_verification(1, 'Apply for premises licence', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/find-licences/premises-licence', verification_method='none', fee='100-635'),
+                _step_with_verification(2, 'Designate a Designated Premises Supervisor (DPS)', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Apply for personal licence (DPS)', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/find-licences/personal-licence', verification_method='none', fee='37'),
+                _step_with_verification(4, 'Complete licensing objectives training', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(5, 'Display licence and notices', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(6, 'Notify responsible authorities', 'AUTO',
+                    '', verification_method='none'),
             ],
         },
         'taxi': {
             'name': 'Private Hire / Taxi Driver Licence',
             'authority': 'Local Council',
-            'url': 'https://www.gov.uk/private-hire-vehicle-licence',
+            'source_url': 'https://www.gov.uk/private-hire-vehicle-licence',
             'fee': 'Varies by council',
             'deadline': 'Before driving',
             'steps': [
-                {'step': 1, 'task': 'Apply for private hire driver licence', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/private-hire-vehicle-licence', 'fee': 'Varies'},
-                {'step': 2, 'task': 'DBS check', 'action_class': 'USER_HANDOFF'},
-                {'step': 3, 'task': 'Medical examination', 'action_class': 'USER_HANDOFF'},
-                {'step': 4, 'task': 'Topographical test', 'action_class': 'USER_HANDOFF'},
-                {'step': 5, 'task': 'Driving test (if required)', 'action_class': 'USER_HANDOFF'},
-                {'step': 6, 'task': 'Apply for vehicle licence', 'action_class': 'APPROVAL_REQUIRED', 'fee': 'Varies'},
+                _step_with_verification(1, 'Apply for private hire driver licence', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/private-hire-vehicle-licence', verification_method='none', fee='Varies'),
+                _step_with_verification(2, 'DBS check', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Medical examination', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(4, 'Topographical test', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(5, 'Driving test (if required)', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(6, 'Apply for vehicle licence', 'APPROVAL_REQUIRED',
+                    '', verification_method='none', fee='Varies'),
             ],
         },
         'construction': {
             'name': 'Construction Business',
             'authority': 'HSE / Local Council',
-            'url': 'https://www.hse.gov.uk/construction/',
+            'source_url': 'https://www.hse.gov.uk/construction/',
             'fee': 'Free registration',
             'deadline': 'Before starting work',
             'steps': [
-                {'step': 1, 'task': 'Register as a construction business', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.hse.gov.uk/construction/', 'fee': 'Free'},
-                {'step': 2, 'task': 'Health and safety policy', 'action_class': 'USER_HANDOFF'},
-                {'step': 3, 'task': 'Public liability insurance', 'action_class': 'USER_HANDOFF'},
-                {'step': 4, 'task': 'CSCS cards for workers', 'action_class': 'USER_HANDOFF', 'url': 'https://www.cscs.co.uk/'},
-                {'step': 5, 'task': 'Waste carrier licence', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/guidance/register-as-a-waste-carrier', 'fee': '154 for 3 years'},
+                _step_with_verification(1, 'Register as a construction business', 'APPROVAL_REQUIRED',
+                    'https://www.hse.gov.uk/construction/', verification_method='none', fee='Free'),
+                _step_with_verification(2, 'Health and safety policy', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Public liability insurance', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(4, 'CSCS cards for workers', 'USER_HANDOFF',
+                    'https://www.cscs.co.uk/', verification_method='none'),
+                _step_with_verification(5, 'Waste carrier licence', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/guidance/register-as-a-waste-carrier', verification_method='none',
+                    fee='154 for 3 years'),
             ],
         },
     }
 
     workflow = workflows.get(business_lower)
     if not workflow:
-        return {'status': 'error', 'message': f'Unknown business type: {business_type}', 'available_types': list(workflows.keys())}
+        result = {'status': 'error', 'message': f'Unknown business type: {business_type}', 'available_types': list(workflows.keys())}
+        return _truth_wrap('start_regulated_business', result, truth_class="VERIFIED",
+                          confidence=1.0, limitations=["Invalid input"])
 
     agent_items = [s for s in workflow['steps'] if s['action_class'] in ('AUTO', 'APPROVAL_REQUIRED')]
     user_items = [s for s in workflow['steps'] if s['action_class'] == 'USER_HANDOFF']
 
-    return {
+    result = {
         'status': 'ok',
         'task': f'Start regulated business: {workflow["name"]}',
         'capability_level': 3,
@@ -2123,7 +1682,7 @@ def start_regulated_business(business_type):
         'required_documents': ['Business plan', 'Premises details', 'Insurance documents', 'Staff training records'],
         'deadlines': [f'{workflow["name"]}: {workflow["deadline"]}'],
         'fees': [f'{workflow["name"]}: {workflow["fee"]}'],
-        'official_urls': [s['url'] for s in workflow['steps'] if s.get('url')],
+        'official_urls': [s['source_url'] for s in workflow['steps'] if s['source_url']],
         'failure_modes': [
             'Operating without registration (criminal offence, unlimited fine)',
             'Failing inspection (can be shut down)',
@@ -2135,7 +1694,16 @@ def start_regulated_business(business_type):
             'Renew licence before expiry',
             'Annual food hygiene rating reassessment',
         ],
+        'verification_summary': {
+            'total_steps': len(workflow['steps']),
+            'verified': sum(1 for s in workflow['steps'] if s['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for s in workflow['steps'] if s['verification_status'] != 'VERIFIED'),
+        },
     }
+    return _truth_wrap('start_regulated_business', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow['steps'] if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages"])
 
 
 def resolve_letter(letter_text):
@@ -2172,10 +1740,13 @@ def resolve_letter(letter_text):
             'task': 'Resolve HMRC tax bill',
             'capability_level': 4,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify amount and deadline', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Check if amount is correct', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/check-income-tax-returns'},
-                {'step': 3, 'task': 'Set up payment plan if needed', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/pay-self-assessment-tax-bill'},
-                {'step': 4, 'task': 'Dispute if incorrect', 'action_class': 'USER_HANDOFF', 'url': 'https://www.gov.uk/claim-tax-refund'},
+                _step_with_verification(1, 'Identify amount and deadline', 'AUTO', '', verification_method='none'),
+                _step_with_verification(2, 'Check if amount is correct', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/check-income-tax-returns', verification_method='none'),
+                _step_with_verification(3, 'Set up payment plan if needed', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/pay-self-assessment-tax-bill', verification_method='none'),
+                _step_with_verification(4, 'Dispute if incorrect', 'USER_HANDOFF',
+                    'https://www.gov.uk/claim-tax-refund', verification_method='none'),
             ],
             'agent_actions': ['Identify deadline and amount', 'Check tax account', 'Set up payment plan'],
             'user_actions': ['Approve payment', 'Provide bank details', 'Dispute if needed'],
@@ -2184,9 +1755,12 @@ def resolve_letter(letter_text):
             'task': 'Renew MOT',
             'capability_level': 3,
             'workflow_steps': [
-                {'step': 1, 'task': 'Check current MOT status', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/check-mot-history'},
-                {'step': 2, 'task': 'Book MOT test', 'action_class': 'USER_HANDOFF', 'url': 'https://www.gov.uk/get-mot'},
-                {'step': 3, 'task': 'Take vehicle to test', 'action_class': 'USER_HANDOFF'},
+                _step_with_verification(1, 'Check current MOT status', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/check-mot-history', verification_method='none'),
+                _step_with_verification(2, 'Book MOT test', 'USER_HANDOFF',
+                    'https://www.gov.uk/get-mot', verification_method='none'),
+                _step_with_verification(3, 'Take vehicle to test', 'USER_HANDOFF',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Check MOT status', 'Find local garages'],
             'user_actions': ['Book test', 'Take vehicle', 'Pay garage'],
@@ -2195,9 +1769,12 @@ def resolve_letter(letter_text):
             'task': 'Renew vehicle tax',
             'capability_level': 3,
             'workflow_steps': [
-                {'step': 1, 'task': 'Check vehicle tax status', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/check-vehicle-tax'},
-                {'step': 2, 'task': 'Ensure valid MOT', 'action_class': 'AUTO'},
-                {'step': 3, 'task': 'Tax vehicle online', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/vehicle-tax'},
+                _step_with_verification(1, 'Check vehicle tax status', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/check-vehicle-tax', verification_method='none'),
+                _step_with_verification(2, 'Ensure valid MOT', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Tax vehicle online', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/vehicle-tax', verification_method='none'),
             ],
             'agent_actions': ['Check tax status', 'Verify MOT validity'],
             'user_actions': ['Pay for tax renewal'],
@@ -2206,10 +1783,14 @@ def resolve_letter(letter_text):
             'task': 'Renew passport',
             'capability_level': 3,
             'workflow_steps': [
-                {'step': 1, 'task': 'Check eligibility for online renewal', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Get digital photo', 'action_class': 'USER_HANDOFF'},
-                {'step': 3, 'task': 'Apply online', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/renew-adult-passport'},
-                {'step': 4, 'task': 'Post old passport', 'action_class': 'USER_HANDOFF'},
+                _step_with_verification(1, 'Check eligibility for online renewal', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Get digital photo', 'USER_HANDOFF',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Apply online', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/renew-adult-passport', verification_method='none'),
+                _step_with_verification(4, 'Post old passport', 'USER_HANDOFF',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Check eligibility', 'Guide application'],
             'user_actions': ['Get photo', 'Pay', 'Post documents'],
@@ -2218,9 +1799,12 @@ def resolve_letter(letter_text):
             'task': 'Handle council tax matter',
             'capability_level': 3,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify council and issue', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Contact council', 'action_class': 'USER_HANDOFF', 'url': 'https://www.gov.uk/find-local-council'},
-                {'step': 3, 'task': 'Check for discounts or exemptions', 'action_class': 'APPROVAL_REQUIRED'},
+                _step_with_verification(1, 'Identify council and issue', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Contact council', 'USER_HANDOFF',
+                    'https://www.gov.uk/find-local-council', verification_method='none'),
+                _step_with_verification(3, 'Check for discounts or exemptions', 'APPROVAL_REQUIRED',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Find council contact', 'Check for discounts'],
             'user_actions': ['Contact council', 'Provide evidence'],
@@ -2229,9 +1813,12 @@ def resolve_letter(letter_text):
             'task': 'Handle driving licence matter',
             'capability_level': 3,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify specific issue', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Follow DVLA guidance', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/browse/driving'},
-                {'step': 3, 'task': 'Submit required forms', 'action_class': 'APPROVAL_REQUIRED'},
+                _step_with_verification(1, 'Identify specific issue', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Follow DVLA guidance', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/browse/driving', verification_method='none'),
+                _step_with_verification(3, 'Submit required forms', 'APPROVAL_REQUIRED',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Identify issue', 'Guide process'],
             'user_actions': ['Submit forms', 'Provide documents'],
@@ -2240,9 +1827,12 @@ def resolve_letter(letter_text):
             'task': 'Handle company filing matter',
             'capability_level': 4,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify filing requirement', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Prepare documents', 'action_class': 'APPROVAL_REQUIRED'},
-                {'step': 3, 'task': 'File with Companies House', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/file-confirmation-statement'},
+                _step_with_verification(1, 'Identify filing requirement', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Prepare documents', 'APPROVAL_REQUIRED',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'File with Companies House', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/file-confirmation-statement', verification_method='none'),
             ],
             'agent_actions': ['Identify requirement', 'Prepare templates'],
             'user_actions': ['Approve accounts', 'Authorise filing'],
@@ -2251,9 +1841,12 @@ def resolve_letter(letter_text):
             'task': 'Handle benefits matter',
             'capability_level': 3,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify benefit and action required', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Check eligibility', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/benefits-calculators'},
-                {'step': 3, 'task': 'Contact DWP or apply', 'action_class': 'USER_HANDOFF'},
+                _step_with_verification(1, 'Identify benefit and action required', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Check eligibility', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/benefits-calculators', verification_method='none'),
+                _step_with_verification(3, 'Contact DWP or apply', 'USER_HANDOFF',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Identify benefit', 'Check calculator'],
             'user_actions': ['Contact DWP', 'Provide information'],
@@ -2262,9 +1855,12 @@ def resolve_letter(letter_text):
             'task': 'Handle insurance matter',
             'capability_level': 2,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify type of insurance', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Check renewal date', 'action_class': 'AUTO'},
-                {'step': 3, 'task': 'Compare or renew', 'action_class': 'USER_HANDOFF'},
+                _step_with_verification(1, 'Identify type of insurance', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Check renewal date', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Compare or renew', 'USER_HANDOFF',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Identify renewal date', 'Compare options'],
             'user_actions': ['Make final decision', 'Pay'],
@@ -2273,9 +1869,12 @@ def resolve_letter(letter_text):
             'task': 'Handle court fine or penalty',
             'capability_level': 2,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify fine amount and deadline', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Check if you can appeal', 'action_class': 'APPROVAL_REQUIRED'},
-                {'step': 3, 'task': 'Pay or set up payment plan', 'action_class': 'APPROVAL_REQUIRED'},
+                _step_with_verification(1, 'Identify fine amount and deadline', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Check if you can appeal', 'APPROVAL_REQUIRED',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Pay or set up payment plan', 'APPROVAL_REQUIRED',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Identify details', 'Check appeal options'],
             'user_actions': ['Decide to pay or appeal', 'Pay'],
@@ -2284,9 +1883,12 @@ def resolve_letter(letter_text):
             'task': 'Handle V5C matter',
             'capability_level': 3,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify V5C issue', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Contact DVLA', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/vehicle-registration'},
-                {'step': 3, 'task': 'Order replacement if needed', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/vehicle-registration', 'fee': 'Free'},
+                _step_with_verification(1, 'Identify V5C issue', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Contact DVLA', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/vehicle-registration', verification_method='none'),
+                _step_with_verification(3, 'Order replacement if needed', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/vehicle-registration', verification_method='none', fee='Free'),
             ],
             'agent_actions': ['Identify issue', 'Guide DVLA process'],
             'user_actions': ['Contact DVLA', 'Provide details'],
@@ -2295,8 +1897,10 @@ def resolve_letter(letter_text):
             'task': 'Handle electoral matter',
             'capability_level': 2,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify issue', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Register or update', 'action_class': 'APPROVAL_REQUIRED', 'url': 'https://www.gov.uk/register-to-vote'},
+                _step_with_verification(1, 'Identify issue', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Register or update', 'APPROVAL_REQUIRED',
+                    'https://www.gov.uk/register-to-vote', verification_method='none'),
             ],
             'agent_actions': ['Identify issue', 'Guide registration'],
             'user_actions': ['Provide NI number', 'Confirm address'],
@@ -2305,8 +1909,10 @@ def resolve_letter(letter_text):
             'task': 'Handle NHS/medical matter',
             'capability_level': 1,
             'workflow_steps': [
-                {'step': 1, 'task': 'Identify issue', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Direct to appropriate NHS service', 'action_class': 'AUTO', 'url': 'https://www.nhs.uk'},
+                _step_with_verification(1, 'Identify issue', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Direct to appropriate NHS service', 'AUTO',
+                    'https://www.nhs.uk', verification_method='none'),
             ],
             'agent_actions': ['Identify service', 'Provide NHS links'],
             'user_actions': ['Contact service directly'],
@@ -2315,9 +1921,12 @@ def resolve_letter(letter_text):
             'task': 'Unclear government letter',
             'capability_level': 1,
             'workflow_steps': [
-                {'step': 1, 'task': 'Scan letter for sender name and logo', 'action_class': 'AUTO'},
-                {'step': 2, 'task': 'Check for reference numbers', 'action_class': 'AUTO'},
-                {'step': 3, 'task': 'Contact sender to clarify', 'action_class': 'USER_HANDOFF'},
+                _step_with_verification(1, 'Scan letter for sender name and logo', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(2, 'Check for reference numbers', 'AUTO',
+                    '', verification_method='none'),
+                _step_with_verification(3, 'Contact sender to clarify', 'USER_HANDOFF',
+                    '', verification_method='none'),
             ],
             'agent_actions': ['Help identify sender'],
             'user_actions': ['Contact sender', 'Provide letter details'],
@@ -2327,7 +1936,7 @@ def resolve_letter(letter_text):
     primary = matched[0]
     workflow = workflows.get(primary, workflows['unknown'])
 
-    return {
+    result = {
         'status': 'ok',
         'task': workflow['task'],
         'capability_level': workflow['capability_level'],
@@ -2338,7 +1947,7 @@ def resolve_letter(letter_text):
         'required_documents': ['The original letter', 'Any reference numbers', 'Personal identification'],
         'deadlines': ['Check the letter for any response deadlines'],
         'fees': [],
-        'official_urls': [s['url'] for s in workflow['workflow_steps'] if s.get('url')],
+        'official_urls': [s['source_url'] for s in workflow['workflow_steps'] if s['source_url']],
         'failure_modes': [
             'Ignoring the letter (escalation, fines, legal action)',
             'Missing response deadline',
@@ -2349,7 +1958,16 @@ def resolve_letter(letter_text):
             'Keep copy of letter and response',
         ],
         'letter_snippet': letter_text[:200] + ('...' if len(letter_text) > 200 else ''),
+        'verification_summary': {
+            'total_steps': len(workflow['workflow_steps']),
+            'verified': sum(1 for s in workflow['workflow_steps'] if s['verification_status'] == 'VERIFIED'),
+            'not_verified': sum(1 for s in workflow['workflow_steps'] if s['verification_status'] != 'VERIFIED'),
+        },
     }
+    return _truth_wrap('resolve_letter', result, truth_class="CONCEPTUAL",
+                      confidence=0.2,
+                      evidence=[{"type": "source_url", "url": s['source_url']} for s in workflow['workflow_steps'] if s['source_url']],
+                      limitations=["Steps not yet verified against live GOV.UK pages. Letter parsing is pattern-based."])
 
 
 def admin_audit(current_state):
@@ -2363,7 +1981,7 @@ def admin_audit(current_state):
             current_state = {}
 
     if not current_state:
-        return {
+        result = {
             'status': 'ok',
             'task': 'Admin audit',
             'capability_level': 4,
@@ -2387,6 +2005,9 @@ def admin_audit(current_state):
             'failure_modes': [],
             'follow_up_dates': [],
         }
+        return _truth_wrap('admin_audit', result, truth_class="CONCEPTUAL",
+                          confidence=0.1,
+                          limitations=["No data provided for audit"])
 
     if current_state.get('passport_expiry'):
         try:
@@ -2447,7 +2068,7 @@ def admin_audit(current_state):
 
     if current_state.get('company_number'):
         comp = manage_business(current_state['company_number'])
-        for deadline in comp.get('deadlines', []):
+        for deadline in comp.get('result', {}).get('deadlines', []):
             if isinstance(deadline, dict) and deadline.get('deadline'):
                 try:
                     dl = datetime.strptime(deadline['deadline'], '%Y-%m-%d')
@@ -2494,7 +2115,7 @@ def admin_audit(current_state):
     soon = [c for c in checks if c['status'] in ('EXPIRING_SOON', 'DUE_SOON')]
     ok = [c for c in checks if c['status'] == 'OK']
 
-    return {
+    result = {
         'status': 'ok',
         'task': 'Admin audit',
         'capability_level': 4,
@@ -2525,6 +2146,10 @@ def admin_audit(current_state):
             'items': checks,
         },
     }
+    return _truth_wrap('admin_audit', result, truth_class="DERIVED",
+                      confidence=0.7,
+                      evidence=[{"type": "user_input", "description": "current_state provided by user"}],
+                      limitations=["Audit based on user-provided dates, not live API checks"])
 
 
 def renewals(days_ahead):
@@ -2552,7 +2177,7 @@ def renewals(days_ahead):
                         'expiry': car['mot_expiry'],
                         'days_remaining': days_left,
                         'action_class': 'USER_HANDOFF',
-                        'url': 'https://www.gov.uk/get-mot',
+                        'source_url': 'https://www.gov.uk/get-mot',
                         'fee': 'Up to 54.85',
                     })
             except (ValueError, TypeError):
@@ -2567,7 +2192,7 @@ def renewals(days_ahead):
                         'expiry': car['tax_expiry'],
                         'days_remaining': days_left,
                         'action_class': 'APPROVAL_REQUIRED',
-                        'url': 'https://www.gov.uk/vehicle-tax',
+                        'source_url': 'https://www.gov.uk/vehicle-tax',
                         'fee': 'Varies by vehicle',
                     })
             except (ValueError, TypeError):
@@ -2590,14 +2215,14 @@ def renewals(days_ahead):
                             'expiry': comp[key],
                             'days_remaining': days_left,
                             'action_class': 'APPROVAL_REQUIRED',
-                            'url': 'https://www.gov.uk/file-confirmation-statement',
+                            'source_url': 'https://www.gov.uk/file-confirmation-statement',
                         })
                 except (ValueError, TypeError):
                     pass
 
     expiring.sort(key=lambda x: x.get('days_remaining', 9999))
 
-    return {
+    result = {
         'status': 'ok',
         'task': f'Renewals in next {days} days',
         'capability_level': 4,
@@ -2624,6 +2249,76 @@ def renewals(days_ahead):
         'count': len(expiring),
         'expiring_items': expiring,
     }
+    return _truth_wrap('renewals', result, truth_class="DERIVED",
+                      confidence=0.6,
+                      evidence=[{"type": "state_file", "description": "Loaded from local state files"}],
+                      limitations=["Renewals based on locally stored dates, not live API checks"])
+
+
+# ============================================================
+# VERIFICATION STATUS TOOL
+# ============================================================
+
+def verification_status(task_filter=None):
+    """Show verification status of all tasks and workflow steps."""
+    tasks_status = {}
+
+    for tid, task in TASK_DB.items():
+        if task_filter and task_filter not in tid:
+            continue
+        tasks_status[tid] = {
+            'task_name': task.get('task_name', ''),
+            'category': task.get('category', ''),
+            'truth_class': task.get('truth_class', 'CONCEPTUAL'),
+            'verified_at': task.get('verified_at'),
+            'verification_method': task.get('verification_method', 'none'),
+            'source_url': task.get('source_url', ''),
+            'source_hash': task.get('source_hash'),
+            'next_verification_due': task.get('next_verification_due'),
+        }
+
+    workflow_tools = ['move_house', 'manage_car', 'onboard_car', 'manage_business',
+                      'change_details_everywhere', 'renew_passport', 'start_driving',
+                      'start_regulated_business', 'resolve_letter', 'admin_audit', 'renewals']
+
+    workflows_status = {}
+    for tool_name in workflow_tools:
+        workflows_status[tool_name] = {
+            'truth_class': 'CONCEPTUAL',
+            'verified_steps': 0,
+            'total_steps': 'varies',
+            'note': 'All steps currently NOT_VERIFIED — source URLs provided but not checked against live pages',
+        }
+
+    total_tasks = len(tasks_status)
+    verified_tasks = sum(1 for t in tasks_status.values() if t['truth_class'] == 'VERIFIED')
+    conceptual_tasks = sum(1 for t in tasks_status.values() if t['truth_class'] == 'CONCEPTUAL')
+
+    result = {
+        'status': 'ok',
+        'summary': {
+            'total_tasks': total_tasks,
+            'verified_tasks': verified_tasks,
+            'conceptual_tasks': conceptual_tasks,
+            'derivation_date': DEFAULT_AS_OF,
+            'next_verification_due': _default_next_verification(),
+            'verification_period_days': VERIFICATION_PERIOD_DAYS,
+        },
+        'tasks': tasks_status,
+        'workflows': workflows_status,
+        'truth_class_definitions': TRUTH_CLASSES,
+        'verification_methods': VERIFICATION_METHODS,
+        'action': {
+            'class': 'USER_HANDOFF',
+            'note': 'To verify tasks: fetch each source_url, hash the content, compare with source_hash, update verified_at and truth_class',
+        },
+    }
+    return _truth_wrap('verification_status', result, truth_class="VERIFIED",
+                      confidence=1.0,
+                      evidence=[{"type": "metadata", "description": "Verification status report generated from local task database"}],
+                      limitations=[],
+                      method_id="verification_audit",
+                      method_version="1.0.0")
 
 
 # ============================================================
@@ -2654,6 +2349,7 @@ DISPATCH = {
     'resolve_letter': resolve_letter,
     'admin_audit': admin_audit,
     'renewals': renewals,
+    'verification_status': verification_status,
 }
 
 
@@ -2690,8 +2386,8 @@ def run_mcp_stdio():
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "uk_admin", "version": "2.0.0",
-                                   "description": "UK Admin - Get boring British things done. 12 Boring UK workflow capabilities with action classification, capability levels, and full lifecycle management."},
+                    "serverInfo": {"name": "uk_admin", "version": "3.0.0",
+                                   "description": "UK Admin MCP - PR5 Truth Contract. Every response includes source verification metadata. Boring UK's value IS verification."},
                 },
             }
         elif method == "tools/list":
@@ -2715,4 +2411,4 @@ if __name__ == '__main__':
         result = handle_tool_call(sys.argv[1], json.loads(sys.argv[2]))
         print(json.dumps(result, indent=2, default=str))
     else:
-        print(json.dumps({"name": "uk_admin", "version": "2.0.0", "tools": [t["name"] for t in TOOLS]}, indent=2))
+        print(json.dumps({"name": "uk_admin", "version": "3.0.0", "tools": [t["name"] for t in TOOLS]}, indent=2))

@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-UKGraph MCP Server — UK Markets Intelligence
+UKGraph MCP Server — UK Markets Intelligence (PR5 Truth Contract)
 
 Tools:
-- career_crowding: Is a career getting crowded?
-- trade_demand: Demand-to-worker ratio for UK trades
-- business_gap: Find underserved business opportunities
-- regulation_impact: Analyze economic impact of UK regulations
-- salary_data: Get salary/wage data for an occupation
-- local_job_trend: What's happening to jobs in an area
-- find_shortages: What is Britain running out of
+- wage_growth:           ASHE Table 15 earnings by SOC × Region (the foundation)
+- career_crowding:       Is a career getting crowded?
+- trade_demand:          Demand-to-worker ratio for UK trades
+- business_gap:          Find underserved business opportunities by postcode
+- regulation_impact:     Analyze economic impact of UK regulations
+- salary_data:           Get salary/wage data for an occupation
+- local_job_trend:       What's happening to jobs in an area
+- find_shortages:        What is Britain running out of
 - find_skill_opportunities: What skills are scarce in an area
-- market_gap: Is there room for a business in a city
-- wage_growth_map: Where wages are rising fastest
+- market_gap:            Is there room for a business in a city
+- wage_growth_map:       Where wages are rising fastest
+- data_status:           Transparency tool — what data is actually available
 
 Usage:
     python ukgraph_mcp.py                     # List tools
@@ -24,16 +26,28 @@ import json
 import sys
 import os
 from pathlib import Path
-from datetime import datetime
-import requests
+from datetime import datetime, timezone
+import hashlib
 
 ROOT = Path(__file__).parent.parent
-DATA_DIR = ROOT / 'forests' / 'room' / 'data' / 'ons'
 sys.path.insert(0, str(ROOT))
+
+from core import TruthClass, ActionClass, CapabilityResult
+
+# ============================================================
+# CONSTANTS
+# ============================================================
 
 DATAGOVUK_API = 'https://data.gov.uk/api'
 LONDON_DATASTORE_API = 'https://data.london.gov.uk/api/3/action'
 ONS_API = 'https://api.beta.ons.gov.uk/v1'
+POSTCODES_IO_API = 'https://api.postcodes.io'
+
+UK_REGIONS = [
+    'london', 'south east', 'south west', 'east midlands', 'west midlands',
+    'north west', 'north east', 'yorkshire and the humber', 'east of england',
+    'scotland', 'wales', 'northern ireland',
+]
 
 REGION_SYNONYMS = {
     'london': 'london', 'south east': 'south east', 'south west': 'south west',
@@ -46,42 +60,1453 @@ REGION_SYNONYMS = {
     'england': 'england', 'great britain': 'great britain',
 }
 
-CAREER_KEYWORDS = [
-    'nurse', 'doctor', 'engineer', 'teacher', 'developer', 'data scientist',
-    'electrician', 'plumber', 'carpenter', 'mechanic', 'pharmacist',
-    'therapist', 'architect', 'accountant', 'lawyer', 'solicitor',
-    'chef', 'driver', 'care worker', 'paramedic', 'dentist',
-    'veterinarian', 'pilot', 'graphic designer', 'marketing', 'sales',
-    'software', 'cyber', 'cloud', 'devops', 'analyst', 'consultant',
-    'project manager', 'product manager', 'hr', 'human resources',
-]
+ASHE_TABLE_15_URL = (
+    'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/'
+    'earningsandworkinghours/datasets/regionbyoccupation4digitsoc2010ashetable15'
+)
 
-TRADE_KEYWORDS = [
-    'electrician', 'plumber', 'gas engineer', 'carpenter', 'joiner',
-    'bricklayer', 'plasterer', 'roofer', 'painter', 'tiler', 'glazier',
-    'heating engineer', 'air conditioning', 'sprinkler fitter',
-    'groundworker', 'scaffolder', 'steel fixer', 'plant operator',
-    'welder', 'fabricator', 'pipefitter', 'insulation installer',
-]
+SOC4_LABELS = {
+    '1111': 'Chief executives and senior officials',
+    '1112': 'Functional managers and directors',
+    '1121': 'Farmers',
+    '1211': 'Production managers',
+    '1212': 'Quality assurance managers',
+    '1213': 'Transport and distribution managers',
+    '1219': 'Managers and directors n.e.c.',
+    '1221': 'Financial managers',
+    '1222': 'Marketing and sales directors',
+    '1223': 'Purchasing managers',
+    '1224': 'Human resource managers',
+    '1231': 'Construction managers',
+    '1232': 'Environmental health officers',
+    '1233': 'Care managers',
+    '1234': 'Residential day care managers',
+    '2111': 'Chemical scientists',
+    '2112': 'Biological scientists',
+    '2113': 'Biochemists and biomedical scientists',
+    '2114': 'Physical scientists',
+    '2115': 'Social scientists',
+    '2121': 'Civil engineers',
+    '2122': 'Mechanical engineers',
+    '2123': 'Electrical engineers',
+    '2124': 'Electronic engineers',
+    '2126': 'Design and development engineers',
+    '2127': 'Production and process engineers',
+    '2129': 'Engineering professionals n.e.c.',
+    '2131': 'IT and telecommunications directors',
+    '2132': 'Software developers',
+    '2133': 'Data analysts and programmers',
+    '2134': 'Web design professionals',
+    '2135': 'IT project managers',
+    '2136': 'IT managers',
+    '2139': 'Information technology professionals n.e.c.',
+    '2211': 'Medical practitioners',
+    '2212': 'Dentists',
+    '2213': 'Optometrists',
+    '2214': 'Pharmacists',
+    '2215': 'Veterinarians',
+    '2216': 'Medical radiographers',
+    '2217': 'Podiatrists',
+    '2219': 'Health professionals n.e.c.',
+    '2221': 'Physiotherapists',
+    '2222': 'Occupational therapists',
+    '2223': 'Speech and language therapists',
+    '2229': 'Therapy professionals n.e.c.',
+    '2231': 'Midwives',
+    '2232': 'Nurses',
+    '2233': 'Nurse practitioners',
+    '2234': 'Mental health nurses',
+    '2235': 'District nurses',
+    '2239': 'Nursing professionals n.e.c.',
+    '2241': 'Dental practitioners',
+    '2242': 'Dental nurses',
+    '2249': 'Dental professionals n.e.c.',
+    '2251': 'Veterinarians',
+    '2252': 'Vet nurses',
+    '2311': 'Higher education teaching professionals',
+    '2312': 'Further education teaching professionals',
+    '2314': 'Secondary education teaching professionals',
+    '2315': 'Primary education teaching professionals',
+    '2316': 'Special education needs teachers',
+    '2317': 'Senior professionals of educational establishments',
+    '2319': 'Teaching professionals n.e.c.',
+    '2411': 'Barristers and judges',
+    '2412': 'Solicitors',
+    '2419': 'Legal professionals n.e.c.',
+    '2421': 'Chartered and certified accountants',
+    '2422': 'Financial controllers',
+    '2423': 'Treasury managers',
+    '2429': 'Finance professionals n.e.c.',
+    '2431': 'Advertising and marketing directors',
+    '2432': 'Market researchers',
+    '2433': 'Marketing associate professionals',
+    '2441': 'Architects',
+    '2442': 'Landscape architects',
+    '2443': 'Town planners',
+    '2451': 'Social workers',
+    '2452': 'Youth workers',
+    '2461': 'Clergy',
+    '2462': 'Reiki practitioners',
+    '2491': 'Civil service officers',
+    '2492': 'Political officers',
+    '2493': 'Trade union officials',
+    '2494': 'Charity workers',
+    '2499': 'Miscellaneous professions n.e.c.',
+    '3111': 'Nursing auxiliaries',
+    '3112': 'Ambulance staff',
+    '3113': 'Dental nurses',
+    '3114': 'Houseparents',
+    '3119': 'Healthcare assistants n.e.c.',
+    '3121': 'Cleaners',
+    '3211': 'Opticians',
+    '3212': 'Pharmacy technicians',
+    '3213': 'Dispensers',
+    '3219': 'Science technicians n.e.c.',
+    '3221': 'Yoga teachers',
+    '3222': 'Fitness instructors',
+    '3229': 'Sports coaches, instructors and officials n.e.c.',
+    '3231': 'Hairdressers and barbers',
+    '3232': 'Beauticians',
+    '3233': 'Make-up artists',
+    '3239': 'Business and domestic service occupations n.e.c.',
+    '3411': 'Artists',
+    '3412': 'Authors, writers and translators',
+    '3413': 'Actors, entertainers and presenters',
+    '3414': 'Dancers and choreographers',
+    '3415': 'Musicians',
+    '3416': 'Arts officers, producers and directors',
+    '3417': 'Photographers',
+    '3419': 'Arts and entertainment occupations n.e.c.',
+    '3421': 'Interior designers',
+    '3422': 'Product designers',
+    '3423': 'Clothing designers',
+    '3429': 'Design occupations n.e.c.',
+    '3511': 'Agents and business managers',
+    '3512': 'Auctioneers',
+    '3513': 'Valuers and assessors',
+    '3514': 'Inspectors',
+    '3519': 'Business and related associate professionals n.e.c.',
+    '3521': 'Banks and building societies',
+    '3522': 'Insurance brokers',
+    '3523': 'Fund managers',
+    '3529': 'Financial and related associate professionals n.e.c.',
+    '3531': 'Ship and boat officers',
+    '3532': 'Pilots and flight engineers',
+    '3533': 'Air traffic controllers',
+    '3534': 'Clergy',
+    '3539': 'Transport associate professionals n.e.c.',
+    '3541': 'Legislators and senior officials',
+    '3542': 'Judges',
+    '3543': 'Senior officials of religious organisations',
+    '3544': 'Senior local government officers',
+    '3545': 'Senior officers of charity organisations',
+    '3550': 'Senior positions n.e.c.',
+    '4111': 'Farmers',
+    '4112': 'Horticultural trades',
+    '4121': 'Gardeners and groundskeepers',
+    '4122': 'Grounds maintenance workers',
+    '4131': 'Farm managers',
+    '4132': 'Animal care and welfare services',
+    '4133': 'Veterinary nurses',
+    '4139': 'Animal care services n.e.c.',
+    '4211': 'Shelf fillers',
+    '4212': 'Retail cashiers and checkout operators',
+    '4213': 'Demand-driven occupation',
+    '4214': 'Pharmacy assistants',
+    '4215': 'Undertakers and mortuary assistants',
+    '4219': 'Sales occupations n.e.c.',
+    '4221': 'Sales assistants and retail cashiers',
+    '4222': 'Sales representatives',
+    '4223': 'Sales accounts managers',
+    '4224': 'Telesales persons',
+    '4225': 'Market research interviewers',
+    '4226': 'Street traders',
+    '4227': 'Debt, rent and other collection officers',
+    '4229': 'Sales and related occupations n.e.c.',
+    '5111': 'Farm managers',
+    '5112': 'Supervisors, forestry and related',
+    '5113': 'Animal handlers and trainers',
+    '5119': 'Agricultural and related trades n.e.c.',
+    '5121': 'Bakers and flour confectioners',
+    '5122': 'Butchers',
+    '5123': 'Fishmongers and delicatessen',
+    '5124': 'Poultry processors',
+    '5125': 'Food preparation and catering trades n.e.c.',
+    '5126': 'Cooks',
+    '5211': 'Printers',
+    '5212': 'Bookbinders',
+    '5213': 'Lithographic and pre-press workers',
+    '5214': 'Packers and labellers',
+    '5219': 'Paper and wood machine operators n.e.c.',
+    '5221': 'Waste disposal and recycling occupations',
+    '5222': 'Street cleaners',
+    '5223': 'Sewage plant operators',
+    '5224': 'Refuse and salvage workers',
+    '5231': 'Construction and building trades',
+    '5232': 'Painters and decorators',
+    '5233': 'Plasterers',
+    '5234': 'Tilers',
+    '5235': 'Scaffolders, steeplejacks and riggers',
+    '5236': 'Floorers and wall tilers',
+    '5237': 'Bricklayers',
+    '5238': 'Builders',
+    '5239': 'Other construction and building trades',
+    '5241': 'Plumbers',
+    '5242': 'Heating and ventilating engineers',
+    '5243': 'Air conditioning engineers',
+    '5244': 'Gas engineers',
+    '5245': 'Electricians',
+    '5246': 'Cable jointers and jointers',
+    '5249': 'Electrical installation occupations n.e.c.',
+    '5250': 'Skilled metal and electrical occupations',
+    '5251': 'Ironers, pressers and waders',
+    '5252': 'Tailors and dressmakers',
+    '5253': 'Upholsterers',
+    '5254': 'Leather cutters and sewers',
+    '5255': 'Drapers and warehousepersons',
+    '5256': 'Shoe repairers and hatters',
+    '5259': 'Textile, garment and related occupations n.e.c.',
+    '5261': 'Jewellery and precision instrument makers',
+    '5262': 'Musical instrument makers',
+    '5263': 'Tool makers, pattern makers and model makers',
+    '5264': 'Cabinet makers',
+    '5265': 'Glaziers',
+    '5266': 'Stone masons and related trades',
+    '5267': 'Signwriters',
+    '5268': 'Sports equipment makers',
+    '5269': 'Handicraft and related occupations n.e.c.',
+    '5311': 'Coach and vehicle body builders',
+    '5312': 'Motor mechanics',
+    '5313': 'Auto electricians',
+    '5314': 'Vehicle body repairers',
+    '5315': 'Vehicle paint sprayers',
+    '5319': 'Mobile plant maintenance occupations n.e.c.',
+    '5321': 'Aircraft maintenance and related trades',
+    '5322': 'Marine maintenance and related trades',
+    '5323': 'Rail and rolling stock maintenance and related trades',
+    '5329': 'Plant maintenance occupations n.e.c.',
+    '5411': 'Steel erectors',
+    '5412': 'Scaffolders',
+    '5413': 'Riggers',
+    '5414': 'Floorers and carpet fitters',
+    '5415': 'Removal men',
+    '5419': 'Mobile machine drivers and operatives n.e.c.',
+    '5421': 'Mobile machine drivers and operatives',
+    '5422': 'Construction plant operators',
+    '5423': 'Crane drivers',
+    '5424': 'Road construction operatives',
+    '5425': 'Rail construction and maintenance operatives',
+    '5426': 'Transport operatives',
+    '5429': 'Operative construction occupations n.e.c.',
+    '5511': 'Packers, bottlers, canners and weighers',
+    '5512': 'Food, drink and tobacco process operatives',
+    '5513': 'Textile process operatives',
+    '5514': 'Garment making and related occupations',
+    '5519': 'Process operatives n.e.c.',
+    '5521': 'Pulp and paper making operatives',
+    '5522': 'Printing machine operators',
+    '5523': 'Paper product machine operatives',
+    '5529': 'Paper and wood machine operatives n.e.c.',
+    '6111': 'Agricultural and horticultural operatives',
+    '6112': 'Gardeners and groundskeepers',
+    '6113': 'Tree surgeons',
+    '6114': 'Animal handlers',
+    '6119': 'Agricultural and related occupations n.e.c.',
+    '6121': 'Forestry workers',
+    '6122': 'Fishery workers',
+    '6129': 'Fishing and related occupations n.e.c.',
+    '6131': 'Coal miners',
+    '6132': 'Quarry workers',
+    '6133': 'Oil and gas workers',
+    '6139': 'Mining and related occupations n.e.c.',
+    '6211': 'Meat process operatives',
+    '6212': 'Bakers',
+    '6213': 'Food process operatives',
+    '6214': 'Tobacco process operatives',
+    '6219': 'Food preparation and related operatives n.e.c.',
+    '6221': 'Glass and ceramics process operatives',
+    '6222': 'Chemical and related process operatives',
+    '6223': 'Rubber process operatives',
+    '6224': 'Plastics process operatives',
+    '6229': 'Chemical, glass, ceramics and related process operatives n.e.c.',
+    '6231': 'Metal casting and finishing operatives',
+    '6232': 'Welders',
+    '6233': 'Solderers and braziers',
+    '6234': 'Metal working machine operators',
+    '6235': 'Metal polishers',
+    '6239': 'Metal process operatives n.e.c.',
+    '6241': 'Machine tool operators',
+    '6242': 'Fitters and mechanics',
+    '6243': 'CNC machine tool programmers',
+    '6244': 'Tool and die makers',
+    '6249': 'Engineering and related operatives n.e.c.',
+    '6251': 'Electrical and electronic equipment assembly',
+    '6252': 'Electrical assembly and related trades',
+    '6253': 'Electronic assembly and related trades',
+    '6259': 'Electrical and electronic assembly occupations n.e.c.',
+    '6261': 'Inspectors and other manufacturing occupations',
+    '6262': 'Weavers and textile operatives',
+    '6263': 'Knitters and hosiery operatives',
+    '6264': 'Embroiderers and textile traders',
+    '6265': 'Upholsterers and textile traders',
+    '6269': 'Textile and garment occupations n.e.c.',
+    '6291': 'Furniture makers and other woodworkers',
+    '6292': 'Woodworking machine operators',
+    '6299': 'Woodworking and related occupations n.e.c.',
+    '7111': 'Warehouse managers',
+    '7112': 'Shelf fillers',
+    '7113': 'Stock control clerks',
+    '7121': 'Packers and labellers',
+    '7122': 'Weighers and graders',
+    '7123': 'Clerical and warehouse occupations n.e.c.',
+    '7124': 'Team leaders',
+    '7125': 'Sorters',
+    '7129': 'Warehouse occupations n.e.c.',
+    '7211': 'Construction occupations',
+    '7212': 'Construction plant operators',
+    '7213': 'Scaffolders and riggers',
+    '7214': 'Bricklayers and masons',
+    '7215': 'Painters and decorators',
+    '7216': 'Plasterers and related trades',
+    '7217': 'Floorers and wall tilers',
+    '7218': 'Glaziers',
+    '7219': 'Construction trades n.e.c.',
+    '7221': 'Plumbers',
+    '7222': 'Heating and ventilating installers',
+    '7223': 'Air conditioning installers',
+    '7224': 'Gas engineers',
+    '7225': 'Electricians',
+    '7226': 'Cable jointers',
+    '7229': 'Electrical installation occupations n.e.c.',
+    '7231': 'Ironers, pressers and waders',
+    '7232': 'Tailors and dressmakers',
+    '7233': 'Upholsterers',
+    '7234': 'Leather cutters and sewers',
+    '7235': 'Drapers and warehousepersons',
+    '7236': 'Shoe repairers and hatters',
+    '7239': 'Textile, garment and related occupations n.e.c.',
+    '7241': 'Jewellery and precision instrument makers',
+    '7242': 'Musical instrument makers',
+    '7243': 'Tool makers, pattern makers and model makers',
+    '7244': 'Cabinet makers',
+    '7245': 'Glaziers',
+    '7246': 'Stone masons and related trades',
+    '7247': 'Signwriters',
+    '7248': 'Sports equipment makers',
+    '7249': 'Handicraft and related occupations n.e.c.',
+    '7251': 'Coach and vehicle body builders',
+    '7252': 'Motor mechanics',
+    '7253': 'Auto electricians',
+    '7254': 'Vehicle body repairers',
+    '7255': 'Vehicle paint sprayers',
+    '7259': 'Mobile plant maintenance occupations n.e.c.',
+    '7261': 'Aircraft maintenance and related trades',
+    '7262': 'Marine maintenance and related trades',
+    '7263': 'Rail and rolling stock maintenance and related trades',
+    '7269': 'Plant maintenance occupations n.e.c.',
+    '7311': 'Steel erectors',
+    '7312': 'Scaffolders',
+    '7313': 'Riggers',
+    '7314': 'Floorers and carpet fitters',
+    '7315': 'Removal men',
+    '7319': 'Mobile machine drivers and operatives n.e.c.',
+    '7321': 'Mobile machine drivers and operatives',
+    '7322': 'Construction plant operators',
+    '7323': 'Crane drivers',
+    '7324': 'Road construction operatives',
+    '7325': 'Rail construction and maintenance operatives',
+    '7326': 'Transport operatives',
+    '7329': 'Operative construction occupations n.e.c.',
+    '7411': 'Packers, bottlers, canners and weighers',
+    '7412': 'Food, drink and tobacco process operatives',
+    '7413': 'Textile process operatives',
+    '7414': 'Garment making and related occupations',
+    '7419': 'Process operatives n.e.c.',
+    '7421': 'Pulp and paper making operatives',
+    '7422': 'Printing machine operators',
+    '7423': 'Paper product machine operatives',
+    '7429': 'Paper and wood machine operatives n.e.c.',
+    '8111': 'Production line operatives',
+    '8112': 'Quality control and related occupations',
+    '8113': 'Assembly and related occupations',
+    '8114': 'HGV drivers',
+    '8115': 'Van drivers',
+    '8116': 'Bus and coach drivers',
+    '8117': 'Delivery drivers',
+    '8118': 'Drivers of industrial trucks and cranes',
+    '8119': 'Mobile machine drivers and operatives n.e.c.',
+    '8121': 'Process operatives',
+    '8122': 'Construction operatives',
+    '8123': 'Food preparation and related occupations',
+    '8124': 'Glass and ceramics process operatives',
+    '8125': 'Chemical and related process operatives',
+    '8126': 'Rubber process operatives',
+    '8127': 'Plastics process operatives',
+    '8129': 'Chemical, glass, ceramics and related process operatives n.e.c.',
+    '8131': 'Metal casting and finishing operatives',
+    '8132': 'Welders',
+    '8133': 'Solderers and braziers',
+    '8134': 'Metal working machine operators',
+    '8135': 'Metal polishers',
+    '8139': 'Metal process operatives n.e.c.',
+    '8141': 'Machine tool operators',
+    '8142': 'Fitters and mechanics',
+    '8143': 'CNC machine tool programmers',
+    '8144': 'Tool and die makers',
+    '8149': 'Engineering and related operatives n.e.c.',
+    '8151': 'Electrical and electronic equipment assembly',
+    '8152': 'Electrical assembly and related trades',
+    '8153': 'Electronic assembly and related trades',
+    '8159': 'Electrical and electronic assembly occupations n.e.c.',
+    '8161': 'Inspectors and other manufacturing occupations',
+    '8162': 'Weavers and textile operatives',
+    '8163': 'Knitters and hosiery operatives',
+    '8164': 'Embroiderers and textile traders',
+    '8165': 'Upholsterers and textile traders',
+    '8169': 'Textile and garment occupations n.e.c.',
+    '8171': 'Furniture makers and other woodworkers',
+    '8172': 'Woodworking machine operators',
+    '8179': 'Woodworking and related occupations n.e.c.',
+    '8211': 'Assemblers',
+    '8212': 'Packers and labellers',
+    '8213': 'Weighers and graders',
+    '8214': 'Warehouse occupations',
+    '8215': 'Team leaders',
+    '8219': 'Elementary occupations n.e.c.',
+    '8221': 'Construction occupations',
+    '8222': 'Construction plant operators',
+    '8223': 'Scaffolders and riggers',
+    '8224': 'Bricklayers and masons',
+    '8225': 'Painters and decorators',
+    '8226': 'Plasterers and related trades',
+    '8227': 'Floorers and wall tilers',
+    '8228': 'Glaziers',
+    '8229': 'Construction trades n.e.c.',
+    '8231': 'Ironers, pressers and waders',
+    '8232': 'Tailors and dressmakers',
+    '8233': 'Upholsterers',
+    '8234': 'Leather cutters and sewers',
+    '8235': 'Drapers and warehousepersons',
+    '8236': 'Shoe repairers and hatters',
+    '8239': 'Textile, garment and related occupations n.e.c.',
+    '8241': 'Jewellery and precision instrument makers',
+    '8242': 'Musical instrument makers',
+    '8243': 'Tool makers, pattern makers and model makers',
+    '8244': 'Cabinet makers',
+    '8245': 'Glaziers',
+    '8246': 'Stone masons and related trades',
+    '8247': 'Signwriters',
+    '8248': 'Sports equipment makers',
+    '8249': 'Handicraft and related occupations n.e.c.',
+    '8251': 'Coach and vehicle body builders',
+    '8252': 'Motor mechanics',
+    '8253': 'Auto electricians',
+    '8254': 'Vehicle body repairers',
+    '8255': 'Vehicle paint sprayers',
+    '8259': 'Mobile plant maintenance occupations n.e.c.',
+    '8261': 'Aircraft maintenance and related trades',
+    '8262': 'Marine maintenance and related trades',
+    '8263': 'Rail and rolling stock maintenance and related trades',
+    '8269': 'Plant maintenance occupations n.e.c.',
+    '8311': 'Steel erectors',
+    '8312': 'Scaffolders',
+    '8313': 'Riggers',
+    '8314': 'Floorers and carpet fitters',
+    '8315': 'Removal men',
+    '8319': 'Mobile machine drivers and operatives n.e.c.',
+    '8321': 'Mobile machine drivers and operatives',
+    '8322': 'Construction plant operators',
+    '8323': 'Crane drivers',
+    '8324': 'Road construction operatives',
+    '8325': 'Rail construction and maintenance operatives',
+    '8326': 'Transport operatives',
+    '8329': 'Operative construction occupations n.e.c.',
+    '9111': 'Domestic housekeepers',
+    '9112': 'Launderers, dry cleaners and pressers',
+    '9113': 'Caretakers and school keepers',
+    '9114': 'Cleaning and related occupations',
+    '9119': 'Domestic occupations n.e.c.',
+    '9121': 'Shelf fillers',
+    '9122': 'Retail cashiers and checkout operators',
+    '9123': 'Demand-driven occupation',
+    '9124': 'Pharmacy assistants',
+    '9125': 'Undertakers and mortuary assistants',
+    '9129': 'Sales occupations n.e.c.',
+    '9131': 'Shopkeepers and retail managers',
+    '9132': 'Market traders and stallholders',
+    '9133': 'Debt, rent and other collection officers',
+    '9139': 'Sales and related occupations n.e.c.',
+    '9211': 'Agricultural and horticultural operatives',
+    '9212': 'Gardeners and groundskeepers',
+    '9213': 'Tree surgeons',
+    '9214': 'Animal handlers',
+    '9219': 'Agricultural and related occupations n.e.c.',
+    '9221': 'Forestry workers',
+    '9222': 'Fishery workers',
+    '9229': 'Fishing and related occupations n.e.c.',
+    '9231': 'Coal miners',
+    '9232': 'Quarry workers',
+    '9233': 'Oil and gas workers',
+    '9239': 'Mining and related occupations n.e.c.',
+    '9241': 'Meat process operatives',
+    '9242': 'Bakers',
+    '9243': 'Food process operatives',
+    '9244': 'Tobacco process operatives',
+    '9249': 'Food preparation and related operatives n.e.c.',
+    '9251': 'Glass and ceramics process operatives',
+    '9252': 'Chemical and related process operatives',
+    '9253': 'Rubber process operatives',
+    '9254': 'Plastics process operatives',
+    '9259': 'Chemical, glass, ceramics and related process operatives n.e.c.',
+    '9261': 'Metal casting and finishing operatives',
+    '9262': 'Welders',
+    '9263': 'Solderers and braziers',
+    '9264': 'Metal working machine operators',
+    '9265': 'Metal polishers',
+    '9269': 'Metal process operatives n.e.c.',
+    '9271': 'Machine tool operators',
+    '9272': 'Fitters and mechanics',
+    '9273': 'CNC machine tool programmers',
+    '9274': 'Tool and die makers',
+    '9279': 'Engineering and related operatives n.e.c.',
+    '9281': 'Electrical and electronic equipment assembly',
+    '9282': 'Electrical assembly and related trades',
+    '9283': 'Electronic assembly and related trades',
+    '9289': 'Electrical and electronic assembly occupations n.e.c.',
+    '9291': 'Inspectors and other manufacturing occupations',
+    '9292': 'Weavers and textile operatives',
+    '9293': 'Knitters and hosiery operatives',
+    '9294': 'Embroiderers and textile traders',
+    '9295': 'Upholsterers and textile traders',
+    '9299': 'Textile and garment occupations n.e.c.',
+}
 
-SECTOR_KEYWORDS = [
-    'retail', 'hospitality', 'care', 'health', 'construction', 'manufacturing',
-    'logistics', 'transport', 'finance', 'insurance', 'tech', 'digital',
-    'education', 'childcare', 'food', 'drink', 'beauty', 'fitness',
-    'cleaning', 'security', 'recruitment', 'property', 'estate agent',
-    'veterinary', 'dental', 'pharmacy', 'telecoms', 'energy', 'utilities',
-    'professional services', 'legal', 'accounting', 'consulting',
-]
+# ============================================================
+# PR5 RESPONSE CONTRACT
+# ============================================================
+
+def _response(
+    capability: str,
+    result: dict,
+    truth_class: TruthClass = TruthClass.CONCEPTUAL,
+    confidence: float = 0.0,
+    evidence: list = None,
+    method_id: str = '',
+    method_version: str = '1.0',
+    action_class: ActionClass = ActionClass.ADVISORY,
+    limitations: list = None,
+) -> dict:
+    """Build a PR5-compliant response envelope."""
+    now = datetime.now(timezone.utc).isoformat()
+    return {
+        'capability': capability,
+        'as_of': now,
+        'result': result,
+        'truth_class': truth_class.value,
+        'confidence': confidence,
+        'evidence': evidence or [],
+        'method': {'id': method_id, 'version': method_version},
+        'limitations': limitations or [],
+        'action': {'class': action_class.value},
+    }
 
 
 # ============================================================
-# TOOLS
+# DATA STATUS
+# ============================================================
+
+def data_status():
+    """Transparency tool — what data is actually available right now."""
+    return _response(
+        capability='ukgraph.data_status',
+        result={
+            'data_sources': [
+                {
+                    'id': 'ashe_table15',
+                    'name': 'ASHE Table 15 — Region by Occupation (4-digit SOC)',
+                    'url': ASHE_TABLE_15_URL,
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'truth_class': TruthClass.UNAVAILABLE.value,
+                    'what_it_covers': 'Median annual pay by SOC 4-digit × Region × Year',
+                    'how_to_collect': 'Download XLS from ONS, parse Table 15 tabs, normalise SOC codes',
+                },
+                {
+                    'id': 'ashe_table14',
+                    'name': 'ASHE Table 14 — Occupation by Region',
+                    'url': 'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/occupationbyregion4digitsoc2010ashetable14',
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'Gross weekly pay, annual pay, hours by SOC × Region',
+                },
+                {
+                    'id': 'claimant_count',
+                    'name': 'ONS Claimant Count by local authority',
+                    'url': 'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/claimantcountbylocalauthority',
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'Number of claimants by age and duration, by LA',
+                },
+                {
+                    'id': 'vacancies',
+                    'name': 'ONS Vacancies by industry and region',
+                    'url': 'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/vacanciesbyindustry',
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'Vacancies by industry sector, time series',
+                },
+                {
+                    'id': 'business_demography',
+                    'name': 'ONS UK Business: Activity, Size and Location',
+                    'url': 'https://www.ons.gov.uk/businessindustryandtrade/business/activitysizeandlocation/datasets/ukbusinessactivitysizeandlocation',
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'Business births, deaths, active stock by SIC × LA',
+                },
+                {
+                    'id': 'companies_house',
+                    'name': 'Companies House API — company register',
+                    'url': 'https://api.company-information.service.gov.uk/',
+                    'status': 'NOT_INTEGRATED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'Company registrations, appointments, filings by postcode',
+                },
+                {
+                    'id': 'neet',
+                    'name': 'ONS NEET statistics by age',
+                    'url': 'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/employmentandemployeetypes/datasets/peopleaged16to24neet',
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'NEET rates by age, gender, region',
+                },
+                {
+                    'id': 'hesa_graduates',
+                    'name': 'HESA graduate outcomes by subject',
+                    'url': 'https://www.hesa.ac.uk/data-and-analysis/graduates',
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'Graduate counts by subject, institution, employment outcomes',
+                },
+                {
+                    'id': 'job_advert_index',
+                    'name': 'CEBR/Adzuna job advert index',
+                    'url': None,
+                    'status': 'NOT_COLLECTED',
+                    'freshness': None,
+                    'record_count': 0,
+                    'what_it_covers': 'Real-time job advert volume by sector and region',
+                },
+            ],
+            'collection_status': 'No data has been collected yet. All tools are returning conceptual or unavailable responses. This is correct behaviour under the PR5 truth contract.',
+            'next_steps': [
+                'Collect ASHE Table 15 XLS files (2014–present) and parse SOC × Region earnings',
+                'Integrate ONS Claimant Count API for demand-side signals',
+                'Connect Companies House API for business formation/death data',
+                'Collect HESA graduate output for supply-side signals',
+            ],
+        },
+        truth_class=TruthClass.CONCEPTUAL,
+        confidence=1.0,
+        method_id='ukgraph.data_status',
+        limitations=[
+            'All underlying datasets report NOT_COLLECTED. This tool exists for transparency.',
+        ],
+    )
+
+
+# ============================================================
+# WAGE GROWTH (the foundation tool)
+# ============================================================
+
+def wage_growth(soc_code=None, occupation=None, region=None, start_year=None, end_year=None):
+    """ASHE Table 15: earnings by SOC 4-digit × Region, year-on-year change.
+
+    This is the FIRST and most trustworthy UKGraph tool once data is collected.
+    Currently returns UNAVAILABLE because ASHE data has not been ingested.
+    """
+    resolved_soc = soc_code
+    if not resolved_soc and occupation:
+        resolved_soc = _resolve_occupation_to_soc(occupation)
+    if not resolved_soc:
+        resolved_soc = 'unknown'
+
+    resolved_region = _normalise_region(region)
+    now_year = datetime.now(timezone.utc).year
+    actual_start = start_year or (now_year - 2)
+    actual_end = end_year or (now_year - 1)
+
+    result = {
+        'soc_code': resolved_soc,
+        'soc_label': SOC4_LABELS.get(resolved_soc, occupation or 'Unknown'),
+        'region': resolved_region or 'All UK regions',
+        'period': f'{actual_start}-{actual_end}',
+        'data_source': 'ASHE Table 15',
+        'url': ASHE_TABLE_15_URL,
+        'what_this_tool_would_return': {
+            'median_annual_pay_start_year': None,
+            'median_annual_pay_end_year': None,
+            'nominal_change': None,
+            'real_change_inflation_adjusted': None,
+            'percentile_10': None,
+            'percentile_90': None,
+            'sample_size': None,
+        },
+        'method_description': (
+            'ASHE Table 15, SOC 4-digit × Region, median annual pay, '
+            'year-on-year change. Adjusted for CPIH inflation where available.'
+        ),
+    }
+
+    return _response(
+        capability='ukgraph.wage_growth',
+        result=result,
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.wage_growth.ashe_table15',
+        limitations=[
+            'ASHE Table 15 data has not been collected yet.',
+            'To activate: download XLS from ONS, parse Table 15 by year, '
+            'normalise SOC codes to 4-digit, store as JSONL.',
+            f'Expected data URL: {ASHE_TABLE_15_URL}',
+            'SOC code lookup is incomplete — only a subset of 4-digit codes mapped.',
+        ],
+    )
+
+
+def _resolve_occupation_to_soc(occupation):
+    """Best-effort text match to SOC 4-digit code."""
+    if not occupation:
+        return None
+    occ_lower = occupation.lower().strip()
+
+    direct_map = {
+        'nurse': '2232', 'registered nurse': '2232', 'nursing': '2232',
+        'doctor': '2211', 'medical practitioner': '2211', 'physician': '2211',
+        'dentist': '2212', 'dental': '2212',
+        'pharmacist': '2214', 'pharmacy': '2214',
+        'vet': '2215', 'veterinarian': '2215', 'veterinary': '2215',
+        'optometrist': '2213', 'optician': '3211',
+        'therapist': '2229', 'physiotherapist': '2221',
+        'midwife': '2231', 'midwives': '2231',
+        'electrician': '5245', 'electric': '5245',
+        'plumber': '5241', 'plumbing': '5241',
+        'gas engineer': '5244', 'gas': '5244',
+        'carpenter': '5264', 'joiner': '5264', 'carpentry': '5264',
+        'bricklayer': '5237', 'bricklaying': '5237',
+        'plasterer': '5233', 'plastering': '5233',
+        'roofer': '5239', 'roofing': '5239',
+        'painter': '5232', 'decorator': '5232', 'painting and decorating': '5232',
+        'tiler': '5234', 'tiling': '5234',
+        'glazier': '5265', 'glazing': '5265',
+        'welder': '5232', 'welding': '5232',
+        'mechanic': '5312', 'motor mechanic': '5312', 'motor vehicle mechanic': '5312',
+        'chef': '5611', 'cook': '5611', 'cooking': '5611',
+        'software developer': '2132', 'software': '2132', 'developer': '2132',
+        'data analyst': '2133', 'data scientist': '2133', 'programmer': '2133',
+        'cyber security': '2136', 'cyber': '2136', 'cloud': '2136', 'devops': '2136',
+        'teacher': '2314', 'teaching': '2314', 'lecturer': '2312',
+        'architect': '2441', 'architectural': '2441',
+        'accountant': '2421', 'accounting': '2421',
+        'lawyer': '2412', 'solicitor': '2412', 'legal': '2412',
+        'care worker': '6145', 'care': '6145', 'domiciliary care': '6145',
+        'paramedic': '3212',
+        'graphic designer': '3422', 'designer': '3422',
+        'marketing': '2433', 'sales': '4221',
+        'consultant': '2423', 'management consultant': '2423',
+        'project manager': '2135', 'product manager': '2135',
+        'hr': '2242', 'human resources': '2242',
+        'barber': '3231', 'hairdresser': '3231', 'hairdressing': '3231',
+        'pilot': '3532', 'airline pilot': '3532',
+        'driver': '8211', 'hgv driver': '8211', 'delivery driver': '8211',
+        'cleaner': '9111', 'cleaning': '9111',
+        'security': '8143', 'security guard': '8143',
+    }
+
+    for key, code in direct_map.items():
+        if key in occ_lower:
+            return code
+
+    for code, label in SOC4_LABELS.items():
+        if occ_lower in label.lower():
+            return code
+
+    return None
+
+
+# ============================================================
+# CAREER CROWDING
+# ============================================================
+
+def career_crowding(occupation, region=None):
+    """Is a career getting crowded?
+
+    Requires: ASHE wage growth + ONS Claimant Count (demand) + HESA (graduate supply).
+    Formula: constraint_tightness = demand_growth / (entrant_growth + existing_supply)
+    """
+    resolved_soc = _resolve_occupation_to_soc(occupation)
+    resolved_region = _normalise_region(region)
+
+    formula = {
+        'constraint_tightness': (
+            'demand_growth / (entrant_growth + existing_supply)'
+        ),
+        'components': {
+            'demand_growth': {
+                'source': 'ONS Vacancies by industry + ONS Claimant Count',
+                'required_data': [
+                    'Vacancy counts by SOC or industry sector (monthly)',
+                    'Claimant count by occupation group (monthly)',
+                    'Ratio trend over 2+ years',
+                ],
+                'currently_available': False,
+            },
+            'entrant_growth': {
+                'source': 'HESA graduate output by subject + Skills England/Ifate starts',
+                'required_data': [
+                    'Graduate numbers by subject, last 3 years',
+                    'Apprenticeship starts by level and sector',
+                    'Career changer data (inferred from NEET and retraining)',
+                ],
+                'currently_available': False,
+            },
+            'existing_supply': {
+                'source': 'BRES employment by occupation + ASHE hours data',
+                'required_data': [
+                    'Employed persons by SOC 4-digit (annual)',
+                    'Average hours worked (ASHE Table 14)',
+                    'Inactivity and retirement flows',
+                ],
+                'currently_available': False,
+            },
+        },
+        'interpretation': (
+            'constraint_tightness > 1.0 → market is tight, wages should rise. '
+            'constraint_tightness < 1.0 → oversupply, career is crowded. '
+            'Combine with wage_growth() direction to confirm.'
+        ),
+        'occupational_profile': {
+            'soc_code': resolved_soc,
+            'soc_label': SOC4_LABELS.get(resolved_soc, occupation),
+            'region': resolved_region or 'National',
+        },
+    }
+
+    return _response(
+        capability='ukgraph.career_crowding',
+        result={
+            'occupation': occupation,
+            'region': resolved_region or 'National',
+            'soc_code': resolved_soc,
+            'formula': formula,
+            'verdict': 'UNAVAILABLE — data sources not yet integrated',
+            'advice': (
+                'This tool requires three data sources that are not yet collected. '
+                'See data_status() for collection plan.'
+            ),
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.career_crowding.constraint_tightness',
+        limitations=[
+            'Requires ASHE Table 15 for wage growth signal',
+            'Requires ONS Claimant Count for demand-side proxy',
+            'Requires HESA graduate data for supply-side signal',
+            'Without these, any crowding score would be fabricated',
+        ],
+    )
+
+
+# ============================================================
+# TRADE DEMAND
+# ============================================================
+
+def trade_demand(trade, region=None):
+    """Demand-to-worker ratio for UK trades.
+
+    Requires: ONS Vacancies (demand) + ASHE/BRES (supply).
+    """
+    resolved_region = _normalise_region(region)
+
+    return _response(
+        capability='ukgraph.trade_demand',
+        result={
+            'trade': trade,
+            'region': resolved_region or 'National',
+            'demand_to_worker_ratio': None,
+            'data_requirements': {
+                'demand_signal': {
+                    'source': 'ONS Vacancies by industry (time series)',
+                    'proxy': 'Reed/Cv-Library job adverts if ONS granularity insufficient',
+                    'currently_available': False,
+                },
+                'supply_signal': {
+                    'source': 'BRES employment by SOC + ASHE hours worked',
+                    'alternative': 'Census occupation data (2021)',
+                    'currently_available': False,
+                },
+                'method': (
+                    'demand_to_worker_ratio = demand_growth_rate / supply_growth_rate. '
+                    'Ratio > 1.5 = shortage, < 0.8 = oversupply.'
+                ),
+            },
+            'known_limitations': (
+                'ONS Vacancies by detailed trade is not published at SOC level. '
+                'Use industry-level proxies (construction, health, etc.) and cross-reference '
+                'with Migration Advisory Committee shortage occupation list.'
+            ),
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.trade_demand.demand_worker_ratio',
+        limitations=[
+            'ONS does not publish vacancies at 4-digit SOC level',
+            'Supply data (BRES by SOC) is annual and lags by ~6 months',
+            'Real-time proxy needed: job board scraping or Adzuna index',
+        ],
+    )
+
+
+# ============================================================
+# BUSINESS GAP
+# ============================================================
+
+def business_gap(postcode, sector):
+    """Find undersered business opportunities by postcode.
+
+    Uses: postcodes.io (resolve to LA) + Companies House (business data).
+    """
+    postcode_upper = postcode.upper().strip()
+    district = postcode_upper.split()[0] if postcode_upper else postcode_upper
+
+    local_authority = _resolve_postcode_to_la(postcode_upper)
+
+    return _response(
+        capability='ukgraph.business_gap',
+        result={
+            'postcode': postcode_upper,
+            'district': district,
+            'local_authority': local_authority,
+            'sector': sector,
+            'data_requirements': {
+                'business_counts': {
+                    'source': 'Companies House API or ONS UK Business: Activity, Size and Location',
+                    'method': (
+                        'Query Companies House by registered postcode + SIC code. '
+                        'Count active companies in SIC group for the sector. '
+                        'Compare against population/workforce for per-capita ratio.'
+                    ),
+                    'currently_available': False,
+                },
+                'population_density': {
+                    'source': 'ONS Mid-year Population Estimates',
+                    'method': 'Population aged 16-74 in local authority as denominator',
+                    'currently_available': False,
+                },
+                'business_formation_rate': {
+                    'source': 'ONS Business Demography UK (births and deaths)',
+                    'method': (
+                        'Business birth rate minus death rate = net formation. '
+                        'If formation rate is high but per-capita count is low → gap.'
+                    ),
+                    'currently_available': False,
+                },
+                'retail_footfall': {
+                    'source': 'Springboard footfall data (commercial)',
+                    'alternative': 'ONS Retail Sales Index by region',
+                    'currently_available': False,
+                },
+            },
+            'formula': (
+                'opportunity_score = (area_business_density < national_median) '
+                'AND (birth_rate > national_average) AND (per_capita_income > threshold)'
+            ),
+            'resolution_method': (
+                f'1. Call postcodes.io/{postcode_upper} → get admin_district\n'
+                f'2. Match admin_district to ONS LA code\n'
+                f'3. Query Companies House or ONS business data by LA + SIC\n'
+                f'4. Compute per-capita density vs national benchmark'
+            ),
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.business_gap.postcode_sector',
+        limitations=[
+            'Requires Companies House API integration (free, key optional)',
+            'SIC codes to sector mapping is coarse — need a lookup table',
+            'Population denominator is LA-level, not postcode-level',
+        ],
+    )
+
+
+def _resolve_postcode_to_la(postcode):
+    """Resolve a UK postcode to local authority via postcodes.io."""
+    import urllib.request
+    import urllib.error
+    import urllib.parse
+
+    try:
+        url = f'{POSTCODES_IO_API}/postcodes/{urllib.parse.quote(postcode)}'
+        req = urllib.request.Request(url, headers={'User-Agent': 'datagarden-ukgraph/1.0'})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            if data.get('status') == 200:
+                result = data.get('result', {})
+                return {
+                    'admin_district': result.get('admin_district'),
+                    'admin_district_code': result.get('codes', {}).get('admin_district'),
+                    'region': result.get('region'),
+                    'parliamentary_constituency': result.get('parliamentary_constituency'),
+                }
+    except (urllib.error.URLError, json.JSONDecodeError, KeyError):
+        pass
+    return None
+
+
+# ============================================================
+# REGULATION IMPACT
+# ============================================================
+
+def regulation_impact(query):
+    """Analyse economic impact of UK regulations.
+
+    Requires: ASHE earnings + ONS business demography + policy impact assessments.
+    """
+    return _response(
+        capability='ukgraph.regulation_impact',
+        result={
+            'query': query,
+            'analysis_framework': {
+                'affected_sectors': {
+                    'method': 'Cross-reference regulation scope with SIC codes',
+                    'data_source': 'Regulatory impact assessment (gov.uk) + ONS SIC mapping',
+                    'currently_available': False,
+                },
+                'worker_impact': {
+                    'method': 'ASHE earnings pre/post implementation, by affected SOC codes',
+                    'data_source': 'ASHE Table 15 + ASHE Table 14',
+                    'currently_available': False,
+                },
+                'business_impact': {
+                    'method': 'Business formation/death rates in affected sectors vs control',
+                    'data_source': 'ONS Business Demography UK',
+                    'currently_available': False,
+                },
+                'regional_impact': {
+                    'method': 'Regional concentration of affected industries',
+                    'data_source': 'BRES employment by industry × region',
+                    'currently_available': False,
+                },
+            },
+            'regulatory_sources': [
+                'https://www.legislation.gov.uk/ — primary legislation',
+                'https://www.gov.uk/government/publications — policy papers and impact assessments',
+                'https://hansard.parliament.uk/ — parliamentary debate records',
+            ],
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.regulation_impact.sectoral',
+        limitations=[
+            'Regulation impact is inherently causal and hard to isolate',
+            'Requires access to regulatory impact assessments which vary in quality',
+            'ASHE data lags by ~6 months, making real-time impact assessment impossible',
+        ],
+    )
+
+
+# ============================================================
+# SALARY DATA
+# ============================================================
+
+def salary_data(occupation, region=None):
+    """Get salary/wage data for an occupation.
+
+    Should use ASHE Table 14/15. Currently UNAVAILABLE.
+    """
+    resolved_soc = _resolve_occupation_to_soc(occupation)
+    resolved_region = _normalise_region(region)
+
+    return _response(
+        capability='ukgraph.salary_data',
+        result={
+            'occupation': occupation,
+            'region': resolved_region or 'National',
+            'soc_code': resolved_soc,
+            'data_source': 'ASHE Table 14 (occupation by region) + Table 15 (region by occupation)',
+            'what_this_would_return': {
+                'median_annual_pay': None,
+                'mean_annual_pay': None,
+                'median_hourly_pay': None,
+                'percentile_10_annual': None,
+                'percentile_25_annual': None,
+                'percentile_75_annual': None,
+                'percentile_90_annual': None,
+                'gross_weekly_pay': None,
+                'total_weekly_hours': None,
+                'overtime_hours': None,
+                'sample_size': None,
+                'year': None,
+            },
+            'source_urls': [
+                'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/occupationbyregion4digitsoc2010ashetable14',
+                ASHE_TABLE_15_URL,
+            ],
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.salary_data.ashe_tables',
+        limitations=[
+            'ASHE data has not been collected. No hardcoded salary ranges are provided.',
+            'When data is collected: Table 14 gives occupation × region; Table 15 gives region × occupation.',
+            'Both tables should be consistent — use Table 14 for occupation-first queries.',
+        ],
+    )
+
+
+# ============================================================
+# LOCAL JOB TREND
+# ============================================================
+
+def local_job_trend(postcode):
+    """What's happening to jobs in an area.
+
+    Requires: ONS Business Demography + Claimant Count by local authority.
+    """
+    postcode_upper = postcode.upper().strip()
+    local_authority = _resolve_postcode_to_la(postcode_upper)
+
+    return _response(
+        capability='ukgraph.local_job_trend',
+        result={
+            'postcode': postcode_upper,
+            'local_authority': local_authority,
+            'data_requirements': {
+                'employment_trend': {
+                    'source': 'ONS BRES employment by local authority',
+                    'method': 'Year-on-year change in employee jobs by LA',
+                    'currently_available': False,
+                },
+                'claimant_trend': {
+                    'source': 'ONS Claimant Count by local authority',
+                    'method': 'Monthly claimant count, seasonally adjusted, 12-month change',
+                    'currently_available': False,
+                },
+                'business_formation': {
+                    'source': 'ONS Business Demography by local authority',
+                    'method': 'Business births and deaths in LA, rolling 12 months',
+                    'currently_available': False,
+                },
+                'sector_mix': {
+                    'source': 'ONS Business Register by SIC × LA',
+                    'method': 'Sector composition of the local economy vs national',
+                    'currently_available': False,
+                },
+            },
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.local_job_trend.local_authority',
+        limitations=[
+            'Postcode to local authority resolution requires postcodes.io (free, no key)',
+            'ONS local authority data is published quarterly, not real-time',
+            'Granularity below LA level is not available from official sources',
+        ],
+    )
+
+
+# ============================================================
+# FIND SHORTAGES
+# ============================================================
+
+def find_shortages(region=None):
+    """What is Britain running out of.
+
+    Synthesis tool — joins multiple data sources.
+    Requires: (1) ASHE wage growth, (2) Claimant Count trends,
+              (3) ONS job advert indices, (4) Business formation/death rates
+    """
+    resolved_region = _normalise_region(region)
+
+    return _response(
+        capability='ukgraph.find_shortages',
+        result={
+            'region': resolved_region or 'National',
+            'synthesis_framework': {
+                'step_1_wage_signal': {
+                    'description': 'Occupations with accelerating wage growth signal shortage',
+                    'source': 'ASHE Table 15 — year-on-year median pay growth by SOC × Region',
+                    'threshold': 'Wage growth > CPIH + 2% for 2+ consecutive years',
+                    'currently_available': False,
+                },
+                'step_2_demand_signal': {
+                    'description': 'Occupations with rising claimant-to-vacancy ratio signal demand',
+                    'source': 'ONS Claimant Count + Vacancies by industry',
+                    'threshold': 'Vacancy growth > 10% YoY while claimant count stable/falling',
+                    'currently_available': False,
+                },
+                'step_3_supply_signal': {
+                    'description': 'Occupations with shrinking graduate/apprentice output',
+                    'source': 'HESA graduate counts + Ifate/Skills England starts',
+                    'threshold': 'Entry-level pipeline declining or flat while demand rises',
+                    'currently_available': False,
+                },
+                'step_4_business_signal': {
+                    'description': 'Sectors with high business death rates relative to births',
+                    'source': 'ONS Business Demography UK',
+                    'threshold': 'Net business death rate > 5% for 2+ years',
+                    'currently_available': False,
+                },
+                'synthesis_method': (
+                    'Combine all four signals. Shortage = positive wage signal '
+                    'AND positive demand signal AND negative supply signal. '
+                    'Weight by recency and confidence of each data source.'
+                ),
+            },
+            'known_shortage_list': {
+                'source': 'Migration Advisory Committee Shortage Occupation List',
+                'url': 'https://www.gov.uk/government/publications/shortage-occupation-list',
+                'note': 'This is a policy list, not a data-derived list. Use as validation.',
+            },
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.find_shortages.multi_source_synthesis',
+        limitations=[
+            'This is the most complex tool — requires 4+ data sources integrated',
+            'Each source has different release cadence (monthly/quarterly/annual)',
+            'Shortage is relative to region, not absolute',
+            'The MAC shortage list is politically determined, not purely economic',
+        ],
+    )
+
+
+# ============================================================
+# FIND SKILL OPPORTUNITIES
+# ============================================================
+
+def find_skill_opportunities(postcode, budget=None):
+    """What could I learn that's scarce.
+
+    Requires: ASHE wage growth + Vacancy data + Graduate supply data.
+    """
+    postcode_upper = postcode.upper().strip()
+    local_authority = _resolve_postcode_to_la(postcode_upper)
+
+    return _response(
+        capability='ukgraph.find_skill_opportunities',
+        result={
+            'postcode': postcode_upper,
+            'local_authority': local_authority,
+            'budget': f'£{budget}' if budget else 'No limit',
+            'analysis_method': {
+                'demand_ranking': {
+                    'source': 'ONS Vacancies by industry + Adzuna/Reed job board data',
+                    'method': 'Rank sectors by vacancy growth rate, weighted by regional concentration',
+                    'currently_available': False,
+                },
+                'supply_inverse': {
+                    'source': 'HESA graduates by subject + Ifate apprenticeship starts',
+                    'method': 'Inverse of graduate output = how few people are entering this field',
+                    'currently_available': False,
+                },
+                'earnings_premium': {
+                    'source': 'ASHE Table 14 — hourly pay by SOC',
+                    'method': 'Earnings premium = (sector median - national median) / national median',
+                    'currently_available': False,
+                },
+                'breakeven_calculation': {
+                    'method': 'Training cost / (monthly earnings premium × full-time equivalent)',
+                    'inputs': ['Course cost estimate', 'ASHE earnings data', 'Time to employment'],
+                    'currently_available': False,
+                },
+            },
+            'training_providers': {
+                'note': 'Links to national training databases — not yet integrated',
+                'sources': [
+                    'https://www.find-training.service.gov.uk/ — government course finder',
+                    'https://www.citb.co.uk/ — construction training',
+                    'https://www.cityandguilds.com/ — vocational qualifications',
+                ],
+            },
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.find_skill_opportunities.demand_supply',
+        limitations=[
+            'Cannot rank skills without vacancy and graduate data',
+            'Training costs are estimates, not verified',
+            'Regional skill demand varies — postcode resolution helps but LA data is coarse',
+        ],
+    )
+
+
+# ============================================================
+# MARKET GAP
+# ============================================================
+
+def market_gap(business_type, city):
+    """Is there room for a business in a city.
+
+    Requires: ONS Business Demography + Population density + Sector SIC mapping.
+    """
+    return _response(
+        capability='ukgraph.market_gap',
+        result={
+            'business_type': business_type,
+            'city': city.title(),
+            'analysis_framework': {
+                'existing_supply': {
+                    'method': 'Count active companies in SIC group for the city/area',
+                    'source': 'Companies House API or ONS Business: Activity, Size and Location',
+                    'currently_available': False,
+                },
+                'population_demand': {
+                    'method': 'Per-capita business density vs national benchmark',
+                    'source': 'ONS Mid-year Population Estimates + Business stock',
+                    'currently_available': False,
+                },
+                'formation_rate': {
+                    'method': 'Recent business births and deaths in the sector and area',
+                    'source': 'ONS Business Demography UK',
+                    'currently_available': False,
+                },
+                'spending_power': {
+                    'method': 'ONS ASHE earnings in the area as proxy for disposable income',
+                    'source': 'ASHE Table 15 by region',
+                    'currently_available': False,
+                },
+            },
+            'sector_to_sic_mapping': {
+                'note': 'A SIC code lookup table is needed to map business_type to Standard Industrial Classification',
+                'reference': 'https://www.ons.gov.uk/methodology/classificationsandstandards/standardindustrialclassificationofeconomicactivities',
+                'currently_available': False,
+            },
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.market_gap.city_sector',
+        limitations=[
+            'Business type to SIC code mapping is essential and not yet built',
+            'City-level data requires Companies House API (postcode-based queries)',
+            'Spending power is estimated, not directly observed at postcode level',
+        ],
+    )
+
+
+# ============================================================
+# WAGE GROWTH MAP
+# ============================================================
+
+def wage_growth_map(region=None, occupation=None):
+    """Where wages are rising fastest for an occupation.
+
+    Should use ASHE Table 15 across regions.
+    """
+    resolved_soc = _resolve_occupation_to_soc(occupation)
+    resolved_region = _normalise_region(region)
+
+    return _response(
+        capability='ukgraph.wage_growth_map',
+        result={
+            'occupation': occupation or 'All occupations',
+            'region': resolved_region or 'All UK regions',
+            'soc_code': resolved_soc,
+            'method': {
+                'description': (
+                    'ASHE Table 15: for each region, extract median annual pay '
+                    'for the SOC 4-digit code, compute year-on-year growth, '
+                    'rank regions by growth rate.'
+                ),
+                'data_source': ASHE_TABLE_15_URL,
+                'currently_available': False,
+            },
+            'expected_output': {
+                'per_region': [
+                    {
+                        'region': '<region>',
+                        'median_annual_pay': None,
+                        'yoy_change_pct': None,
+                        'yoy_change_real_pct': None,
+                        'rank': None,
+                    }
+                ],
+                'fastest_growing': None,
+                'slowest_growing': None,
+            },
+        },
+        truth_class=TruthClass.UNAVAILABLE,
+        confidence=0.0,
+        evidence=[],
+        method_id='ukgraph.wage_growth_map.ashe_table15',
+        limitations=[
+            'ASHE Table 15 data not yet collected',
+            'Some SOC codes have small samples at regional level — suppress for reliability',
+            'Year-on-year changes are more volatile for smaller occupations/regions',
+        ],
+    )
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+
+def _normalise_region(region):
+    """Normalise a region string to canonical form."""
+    if not region:
+        return None
+    region_lower = region.lower().strip()
+    return REGION_SYNONYMS.get(region_lower, region.title())
+
+
+# ============================================================
+# TOOL REGISTRY
 # ============================================================
 
 TOOLS = [
     {
+        "name": "data_status",
+        "description": "Transparency tool — shows what UKGraph data is actually available right now. Lists each data source, its freshness, and record count. Use this first to understand what the other tools can and cannot do.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "wage_growth",
+        "description": "ASHE Table 15: earnings by SOC 4-digit x Region, year-on-year change. The foundation tool for all UKGraph labour market analysis. Returns UNAVAILABLE until ASHE data is collected.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "soc_code": {"type": "string", "description": "SOC 4-digit code (e.g. '2232' for nurse)"},
+                "occupation": {"type": "string", "description": "Job role — will be resolved to SOC code (e.g. 'nurse', 'electrician')"},
+                "region": {"type": "string", "description": "UK region (e.g. 'London', 'North West')"},
+                "start_year": {"type": "integer", "description": "Start year for comparison (default: 2 years ago)"},
+                "end_year": {"type": "integer", "description": "End year for comparison (default: last year)"}
+            }
+        }
+    },
+    {
         "name": "career_crowding",
-        "description": "Check if a career is getting crowded. Analyses vacancy trends, worker supply signals, and NEET data from ONS to gauge competition.",
+        "description": "Is a career getting crowded? Requires ASHE wage growth + ONS Claimant Count (demand) + HESA (graduate supply). Formula: constraint_tightness = demand_growth / (entrant_growth + existing_supply). Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -93,7 +1518,7 @@ TOOLS = [
     },
     {
         "name": "trade_demand",
-        "description": "Demand-to-worker ratio for UK trades. Cross-references ONS vacancies, ASHE earnings, and BRES employment data.",
+        "description": "Demand-to-worker ratio for UK trades. Requires ONS Vacancies (demand) + ASHE/BRES (supply). Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -105,7 +1530,7 @@ TOOLS = [
     },
     {
         "name": "business_gap",
-        "description": "Find underserved business opportunities by postcode. Cross-references ONS business demography, retail sales data, and population signals.",
+        "description": "Find undersered business opportunities by postcode. Uses postcodes.io to resolve to local authority, then queries Companies House or ONS business data. Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -117,7 +1542,7 @@ TOOLS = [
     },
     {
         "name": "regulation_impact",
-        "description": "Analyse economic impact of UK regulations. Searches ONS economic data, trade data, and business surveys for regulation effects.",
+        "description": "Analyse economic impact of UK regulations. Requires ASHE earnings + ONS business demography + policy impact assessments. Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -128,7 +1553,7 @@ TOOLS = [
     },
     {
         "name": "salary_data",
-        "description": "Get salary/wage data for an occupation. Uses ONS ASHE and employee earnings bulletins.",
+        "description": "Get salary/wage data for an occupation. Should use ASHE Table 14/15. Returns UNAVAILABLE until ASHE data is collected.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -140,7 +1565,7 @@ TOOLS = [
     },
     {
         "name": "local_job_trend",
-        "description": "What's happening to jobs in an area. Analyses ONS labour market, business demography, and retail sales data for a postcode district.",
+        "description": "What's happening to jobs in an area. Requires ONS Business Demography + Claimant Count by local authority. Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -151,7 +1576,7 @@ TOOLS = [
     },
     {
         "name": "find_shortages",
-        "description": "What is Britain running out of. Analyses ONS vacancies, NEET data, trade data, and population projections for supply gaps.",
+        "description": "What is Britain running out of. Synthesis tool joining (1) ASHE wage growth, (2) Claimant Count trends, (3) ONS job advert indices, (4) Business formation/death rates. Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -161,7 +1586,7 @@ TOOLS = [
     },
     {
         "name": "find_skill_opportunities",
-        "description": "What could I learn that's scarce. Cross-references ONS vacancies, ASHE earnings, and NEET data to find high-demand low-supply skills.",
+        "description": "What could I learn that's scarce. Requires ASHE wage growth + Vacancy data + Graduate supply data. Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -173,7 +1598,7 @@ TOOLS = [
     },
     {
         "name": "market_gap",
-        "description": "Is there room for a business in a city. Analyses ONS business demography, retail sales, and population density data.",
+        "description": "Is there room for a business in a city. Requires ONS Business Demography + Population density + Sector SIC mapping. Returns UNAVAILABLE until data is integrated.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -185,7 +1610,7 @@ TOOLS = [
     },
     {
         "name": "wage_growth_map",
-        "description": "Where wages are rising fastest for an occupation. Uses ONS ASHE data and employee earnings bulletins across regions.",
+        "description": "Where wages are rising fastest for an occupation. Uses ASHE Table 15 across regions. Returns UNAVAILABLE until ASHE data is collected.",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -195,817 +1620,6 @@ TOOLS = [
         }
     },
 ]
-
-
-# ============================================================
-# DATA LOADING
-# ============================================================
-
-def _load_ons_data(query=None, limit=200):
-    """Load data from ONS JSONL files, optionally filtering by query keywords."""
-    if not DATA_DIR.exists():
-        return []
-
-    results = []
-    for f in sorted(DATA_DIR.glob('*.jsonl'), reverse=True):
-        with open(f) as fh:
-            for line in fh:
-                try:
-                    item = json.loads(line)
-                    if query:
-                        data_block = item.get('data', {})
-                        searchable = ' '.join([
-                            str(data_block.get('title', '')),
-                            str(data_block.get('description', '')),
-                            ' '.join(data_block.get('keywords', [])),
-                            str(data_block.get('query', '')),
-                        ]).lower()
-                        if not any(w in searchable for w in query.lower().split()):
-                            continue
-                    results.append(item)
-                    if len(results) >= limit:
-                        return results
-                except json.JSONDecodeError:
-                    continue
-    return results
-
-
-def _load_bulletins(query=None, limit=50):
-    """Load ONS bulletin entries specifically."""
-    all_data = _load_ons_data(query, limit * 5)
-    bulletins = [d for d in all_data if d.get('data_type') == 'ons_bulletins']
-    return bulletins[:limit]
-
-
-def _load_datasets(query=None, limit=50):
-    """Load ONS dataset entries specifically."""
-    all_data = _load_ons_data(query, limit * 5)
-    datasets = [d for d in all_data if d.get('data_type') in ('ons_bulletins', 'labour_demand', 'business_demography')]
-    return datasets[:limit]
-
-
-def _keyword_match(text, keywords):
-    """Check if any keyword appears in text."""
-    text_lower = text.lower()
-    return any(kw.lower() in text_lower for kw in keywords)
-
-
-def _region_match(data, region=None):
-    """Check if data entry relates to a region."""
-    if not region:
-        return True
-    region_lower = region.lower()
-    text = json.dumps(data).lower()
-    return region_lower in text
-
-
-def _compute_signal_score(items, match_fn):
-    """Compute a signal score from matched items."""
-    matched = [i for i in items if match_fn(i)]
-    total = len(items)
-    count = len(matched)
-    ratio = count / total if total > 0 else 0
-
-    titles = [i.get('data', {}).get('title', '') for i in matched[:5]]
-
-    return {
-        'count': count,
-        'total_total': total,
-        'ratio': round(ratio, 3),
-        'signal_strength': 'HIGH' if ratio > 0.15 else 'MEDIUM' if ratio > 0.05 else 'LOW',
-        'sample_titles': titles,
-    }
-
-
-def _fetch_datagovuk(query):
-    """Try data.gov.uk dataset search API."""
-    try:
-        resp = requests.get(
-            f'{DATAGOVUK_API}/3/action/package_search',
-            params={'q': query, 'rows': 5},
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return data.get('result', {}).get('results', [])
-    except Exception:
-        pass
-    return []
-
-
-def _fetch_london_datastore(query):
-    """Try London Datastore API."""
-    try:
-        resp = requests.get(
-            f'{LONDON_DATASTORE_API}/package_search',
-            params={'q': query, 'rows': 5},
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            return data.get('result', {}).get('results', [])
-    except Exception:
-        pass
-    return []
-
-
-def _query_ons_api(dataset_id):
-    """Try live ONS API for a specific dataset."""
-    try:
-        resp = requests.get(
-            f'{ONS_API}/datasets/{dataset_id}/editions/time-series/versions/latest',
-            timeout=15,
-        )
-        if resp.status_code == 200:
-            return resp.json()
-    except Exception:
-        pass
-    return None
-
-
-# ============================================================
-# IMPLEMENTATIONS
-# ============================================================
-
-def career_crowding(occupation, region=None):
-    """Check if a career is getting crowded."""
-    vacancy_data = _load_ons_data('vacancies', limit=100)
-    neet_data = _load_ons_data('NEET', limit=100)
-    labour_data = _load_ons_data('labour market', limit=100)
-    earnings_data = _load_ons_data('earnings', limit=100)
-
-    vacancy_signal = _compute_signal_score(vacancy_data, lambda x: _keyword_match(json.dumps(x), [occupation]))
-    neet_signal = _compute_signal_score(neet_data, lambda x: True)
-    labour_signal = _compute_signal_score(labour_data, lambda x: _keyword_match(json.dumps(x), [occupation]))
-    earnings_signal = _compute_signal_score(earnings_data, lambda x: _keyword_match(json.dumps(x), [occupation]))
-
-    crowding_score = 0
-    crowding_factors = []
-
-    if vacancy_signal['count'] < 3:
-        crowding_score += 30
-        crowding_factors.append('Few vacancies mentioning this role - possible oversupply')
-    elif vacancy_signal['count'] > 8:
-        crowding_score -= 20
-        crowding_factors.append('Many vacancies - active demand exists')
-
-    if neet_signal['count'] > 5:
-        crowding_score += 15
-        crowding_factors.append('High NEET numbers - growing labour pool entering market')
-
-    if labour_signal['ratio'] > 0.1:
-        crowding_score -= 10
-        crowding_factors.append('Labour market activity is strong')
-
-    if earnings_signal['count'] > 0:
-        crowding_score -= 10
-        crowding_factors.append('Active earnings data suggests established workforce')
-
-    crowding_pct = min(max(crowding_score, 0), 100)
-
-    if crowding_pct > 60:
-        verdict = 'CROWDED'
-        advice = 'Consider pivoting to adjacent specialisation or upskilling'
-    elif crowding_pct > 35:
-        verdict = 'MODERATE'
-        advice = 'Market is competitive but opportunity exists for differentiated candidates'
-    else:
-        verdict = 'OPEN'
-        advice = 'Strong entry opportunity - demand likely outpaces supply'
-
-    datagovuk_results = _fetch_datagovuk(f'{occupation} vacancies UK')
-    london_data = _fetch_london_datastore(f'{occupation} jobs') if region and 'london' in region.lower() else []
-
-    return {
-        'status': 'ok',
-        'occupation': occupation,
-        'region': region or 'National',
-        'crowding_score': crowding_pct,
-        'verdict': verdict,
-        'advice': advice,
-        'factors': crowding_factors,
-        'signals': {
-            'vacancies': vacancy_signal,
-            'neet_pool': neet_signal,
-            'labour_market': labour_signal,
-            'earnings_data': earnings_signal,
-        },
-        'external_sources': {
-            'datagovuk': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in datagovuk_results[:3]],
-            'london_datastore': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in london_data[:3]],
-        },
-        'data_points': len(_load_ons_data(occupation)),
-    }
-
-
-def trade_demand(trade, region=None):
-    """Demand-to-worker ratio for UK trades."""
-    vacancy_data = _load_ons_data('vacancies', limit=200)
-    earnings_data = _load_ons_data('earnings', limit=200)
-    employment_data = _load_ons_data('employment', limit=200)
-    bres_data = _load_ons_data('business register employment survey', limit=100)
-
-    vacancy_match = _compute_signal_score(vacancy_data, lambda x: _keyword_match(json.dumps(x), [trade]))
-    earnings_match = _compute_signal_score(earnings_data, lambda x: _keyword_match(json.dumps(x), [trade]))
-    employment_match = _compute_signal_score(employment_data, lambda x: _keyword_match(json.dumps(x), [trade]))
-    bres_match = _compute_signal_score(bres_data, lambda x: _keyword_match(json.dumps(x), [trade]))
-
-    demand_signals = vacancy_match['count'] + employment_match['count']
-    supply_signals = bres_match['count']
-
-    if supply_signals > 0:
-        ratio = round(demand_signals / supply_signals, 2)
-    else:
-        ratio = demand_signals
-
-    if ratio > 3:
-        demand_level = 'VERY HIGH'
-        advice = 'Severe shortage - premium rates possible'
-    elif ratio > 1.5:
-        demand_level = 'HIGH'
-        advice = 'Strong demand - good time to enter or raise rates'
-    elif ratio > 0.8:
-        demand_level = 'BALANCED'
-        advice = 'Market is roughly in equilibrium'
-    else:
-        demand_level = 'LOW'
-        advice = 'Oversupply risk - differentiate or specialise'
-
-    region_filtered = None
-    if region:
-        region_text = region.lower()
-        region_filtered = {
-            'region': region,
-            'vacancies_mentioned': sum(1 for v in vacancy_data if region_text in json.dumps(v).lower()),
-            'earnings_mentioned': sum(1 for e in earnings_data if region_text in json.dumps(e).lower()),
-        }
-
-    return {
-        'status': 'ok',
-        'trade': trade,
-        'region': region or 'National',
-        'demand_level': demand_level,
-        'demand_to_worker_ratio': ratio,
-        'demand_signals': demand_signals,
-        'supply_signals': supply_signals,
-        'advice': advice,
-        'signals': {
-            'vacancies': vacancy_match,
-            'earnings': earnings_match,
-            'employment': employment_match,
-            'bres': bres_match,
-        },
-        'region_breakdown': region_filtered,
-    }
-
-
-def business_gap(postcode, sector):
-    """Find underserved business opportunities by postcode."""
-    business_data = _load_ons_data('business', limit=200)
-    retail_data = _load_ons_data('retail', limit=200)
-    population_data = _load_ons_data('population', limit=100)
-
-    business_match = _compute_signal_score(business_data, lambda x: _keyword_match(json.dumps(x), [sector]))
-    retail_match = _compute_signal_score(retail_data, lambda x: _keyword_match(json.dumps(x), [sector]))
-    population_match = _compute_signal_score(population_data, lambda x: True)
-
-    existing_presence = business_match['count']
-    retail_presence = retail_match['count']
-
-    if existing_presence < 2 and retail_presence < 2:
-        gap_signal = 'STRONG GAP'
-        opportunity = f'Low {sector} presence in area - potential underserved market'
-    elif existing_presence < 5:
-        gap_signal = 'MODERATE GAP'
-        opportunity = f'Limited {sector} presence - room for differentiated entrant'
-    else:
-        gap_signal = 'SATURATED'
-        opportunity = f'Significant {sector} presence already - niche or innovation needed'
-
-    postcode_upper = postcode.upper().strip()
-    district = postcode_upper.split()[0] if postcode_upper.split() else postcode_upper
-
-    datagovuk_datasets = _fetch_datagovuk(f'{sector} business {postcode_upper}')
-    london_datasets = _fetch_london_datastore(f'{sector} {postcode_upper}') if 'SW' in postcode_upper or 'E' in postcode_upper or 'N' in postcode_upper or 'SE' in postcode_upper or 'W' in postcode_upper or 'EC' in postcode_upper else []
-
-    return {
-        'status': 'ok',
-        'postcode': postcode_upper,
-        'district': district,
-        'sector': sector,
-        'gap_signal': gap_signal,
-        'opportunity': opportunity,
-        'existing_business_presence': existing_presence,
-        'retail_presence': retail_presence,
-        'population_signals': population_match['count'],
-        'external_datasets': {
-            'datagovuk': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in datagovuk_datasets[:3]],
-            'london_datastore': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in london_datasets[:3]],
-        },
-        'recommended_actions': [
-            f'Search data.gov.uk for {sector} datasets covering {district}',
-            f'Check ONS UK Business: Activity, Size and Location for {district}',
-            'Cross-reference with local council business register',
-            f'Review ONS retail sales index for {sector} trends',
-        ],
-    }
-
-
-def regulation_impact(query):
-    """Analyse economic impact of UK regulations."""
-    econ_data = _load_ons_data('economy', limit=100)
-    trade_data = _load_ons_data('trade', limit=100)
-    business_data = _load_ons_data('business', limit=100)
-    earnings_data = _load_ons_data('earnings', limit=100)
-    gdp_data = _load_ons_data('GDP', limit=100)
-
-    query_keywords = query.lower().split()
-
-    econ_match = _compute_signal_score(econ_data, lambda x: _keyword_match(json.dumps(x), query_keywords))
-    trade_match = _compute_signal_score(trade_data, lambda x: _keyword_match(json.dumps(x), query_keywords))
-    business_match = _compute_signal_score(business_data, lambda x: _keyword_match(json.dumps(x), query_keywords))
-    earnings_match = _compute_signal_score(earnings_data, lambda x: _keyword_match(json.dumps(x), query_keywords))
-    gdp_match = _compute_signal_score(gdp_data, lambda x: _keyword_match(json.dumps(x), query_keywords))
-
-    total_relevant = econ_match['count'] + trade_match['count'] + business_match['count'] + earnings_match['count'] + gdp_match['count']
-
-    impact_areas = []
-    if econ_match['count'] > 0:
-        impact_areas.append('Macroeconomic indicators')
-    if trade_match['count'] > 0:
-        impact_areas.append('Trade flows')
-    if business_match['count'] > 0:
-        impact_areas.append('Business landscape')
-    if earnings_match['count'] > 0:
-        impact_areas.append('Worker earnings')
-    if gdp_match['count'] > 0:
-        impact_areas.append('GDP growth')
-
-    datagovuk_results = _fetch_datagovuk(f'{query} impact UK')
-    ons_api_data = None
-    for dataset_id in ['cpih01', 'lms01', 'emp11', 'bcw1']:
-        result = _query_ons_api(dataset_id)
-        if result:
-            ons_api_data = result.get('description', {}).get('title', dataset_id)
-            break
-
-    return {
-        'status': 'ok',
-        'query': query,
-        'total_data_points': total_relevant,
-        'impact_areas': impact_areas if impact_areas else ['No direct data matches - broad economic context only'],
-        'signals': {
-            'economy': econ_match,
-            'trade': trade_match,
-            'business': business_match,
-            'earnings': earnings_match,
-            'gdp': gdp_match,
-        },
-        'related_bulletins': [d.get('data', {}).get('title', '') for d in _load_bulletins(query)[:5]],
-        'ons_api_dataset': ons_api_data,
-        'external_sources': {
-            'datagovuk': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in datagovuk_results[:5]],
-        },
-        'recommendations': [
-            'Check ONS Economy briefing for latest macro context',
-            'Review ASHE for earnings impact signals',
-            'Cross-reference with Bank of England Monetary Policy Reports',
-            'Check gov.uk for official regulatory impact assessments',
-        ],
-    }
-
-
-def salary_data(occupation, region=None):
-    """Get salary/wage data for an occupation."""
-    earnings_data = _load_ons_data('earnings', limit=200)
-    ashe_data = _load_ons_data('annual survey of hours and earnings', limit=100)
-
-    occupation_lower = occupation.lower()
-
-    earnings_match = _compute_signal_score(earnings_data, lambda x: _keyword_match(json.dumps(x), [occupation]))
-    ashe_match = _compute_signal_score(ashe_data, lambda x: _keyword_match(json.dumps(x), [occupation]))
-
-    if region:
-        region_lower = region.lower()
-        region_earnings = _compute_signal_score(earnings_data, lambda x: _keyword_match(json.dumps(x), [occupation]) and region_lower in json.dumps(x).lower())
-        region_ashe = _compute_signal_score(ashe_data, lambda x: _keyword_match(json.dumps(x), [occupation]) and region_lower in json.dumps(x).lower())
-    else:
-        region_earnings = {'count': 0}
-        region_ashe = {'count': 0}
-
-    salary_ranges = {
-        'nurse': {'median': 35000, 'range': '28000-45000', 'hourly': '14.50-23.00'},
-        'electrician': {'median': 35000, 'range': '28000-50000', 'hourly': '18.00-30.00'},
-        'plumber': {'median': 32000, 'range': '25000-45000', 'hourly': '16.00-28.00'},
-        'software developer': {'median': 45000, 'range': '30000-75000', 'hourly': '25.00-50.00'},
-        'bricklayer': {'median': 30000, 'range': '22000-42000', 'hourly': '15.00-25.00'},
-        'care worker': {'median': 22000, 'range': '18000-28000', 'hourly': '10.50-14.00'},
-        'teacher': {'median': 32000, 'range': '26000-50000', 'hourly': '13.00-25.00'},
-        'accountant': {'median': 40000, 'range': '28000-70000', 'hourly': '18.00-40.00'},
-        'mechanic': {'median': 28000, 'range': '22000-40000', 'hourly': '14.00-22.00'},
-        'chef': {'median': 25000, 'range': '20000-38000', 'hourly': '11.00-19.00'},
-    }
-
-    matched_range = None
-    for key in salary_ranges:
-        if key in occupation_lower:
-            matched_range = salary_ranges[key]
-            break
-
-    region_premium = {
-        'london': 1.15, 'south east': 1.08, 'scotland': 0.95,
-        'wales': 0.92, 'northern ireland': 0.90, 'north east': 0.90,
-        'north west': 0.95, 'west midlands': 0.95, 'east midlands': 0.95,
-        'yorkshire and the humber': 0.93, 'south west': 0.97, 'east of england': 1.02,
-    }
-
-    adjusted = None
-    if matched_range and region:
-        region_key = region.lower()
-        for rk, mult in region_premium.items():
-            if rk in region_key or region_key in rk:
-                adjusted_median = int(matched_range['median'] * mult)
-                adjusted = {
-                    'median': adjusted_median,
-                    'range': f'{int(int(matched_range["range"].split("-")[0]) * mult)}-{int(int(matched_range["range"].split("-")[1]) * mult)}',
-                    'region_premium': f'{round((mult - 1) * 100)}%',
-                }
-                break
-
-    return {
-        'status': 'ok',
-        'occupation': occupation,
-        'region': region or 'National',
-        'reference_salary': matched_range,
-        'region_adjusted': adjusted,
-        'data_signals': {
-            'earnings_bulletins': earnings_match['count'],
-            'ashe_datasets': ashe_match['count'],
-            'regional_mentions': region_earnings.get('count', 0) + region_ashe.get('count', 0),
-        },
-        'related_bulletins': [d.get('data', {}).get('title', '') for d in _load_bulletins('earnings')[:3]],
-        'note': 'Ranges are indicative based on ONS ASHE reference data. Check ONS API for latest figures.',
-        'recommended_sources': [
-            'ONS Annual Survey of Hours and Earnings (ASHE)',
-            'ONS Employee Earnings bulletin',
-            f'data.gov.uk search for {occupation} salary data',
-        ],
-    }
-
-
-def local_job_trend(postcode):
-    """What's happening to jobs in an area."""
-    labour_data = _load_ons_data('labour market', limit=200)
-    business_data = _load_ons_data('business', limit=200)
-    retail_data = _load_ons_data('retail', limit=200)
-    employment_data = _load_ons_data('employment', limit=200)
-
-    postcode_upper = postcode.upper().strip()
-    district = postcode_upper.split()[0] if postcode_upper.split() else postcode_upper
-
-    region_data = {}
-    for source_name, source_data in [('labour_market', labour_data), ('business', business_data), ('retail', retail_data), ('employment', employment_data)]:
-        region_matches = [d for d in source_data if district.lower() in json.dumps(d).lower()]
-        region_data[source_name] = {
-            'total_entries': len(source_data),
-            'local_mentions': len(region_matches),
-            'sample_titles': [d.get('data', {}).get('title', '') for d in region_matches[:3]],
-        }
-
-    total_local = sum(v['local_mentions'] for v in region_data.values())
-
-    if total_local > 10:
-        activity = 'HIGH'
-        trend = 'Active job market with multiple data signals'
-    elif total_local > 3:
-        activity = 'MODERATE'
-        trend = 'Some economic activity detected - check specific sectors'
-    else:
-        activity = 'LOW'
-        trend = 'Limited data for this exact area - regional data may be more relevant'
-
-    datagovuk_results = _fetch_datagovuk(f'employment jobs {district}')
-    london_results = _fetch_london_datastore(f'employment {district}') if district[0] in ('E', 'N', 'S', 'W', 'EC') else []
-
-    return {
-        'status': 'ok',
-        'postcode': postcode_upper,
-        'district': district,
-        'activity_level': activity,
-        'trend': trend,
-        'data_breakdown': region_data,
-        'total_local_signals': total_local,
-        'external_sources': {
-            'datagovuk': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in datagovuk_results[:3]],
-            'london_datastore': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in london_results[:3]],
-        },
-        'recommended_checks': [
-            f'ONS Regional Labour Market bulletin for {district} region',
-            'ONS UK Business: Activity, Size and Location',
-            f'data.gov.uk for {district} local authority employment data',
-        ],
-    }
-
-
-def find_shortages(region=None):
-    """What is Britain running out of."""
-    vacancy_data = _load_ons_data('vacancies', limit=200)
-    neet_data = _load_ons_data('NEET', limit=100)
-    trade_data = _load_ons_data('trade', limit=100)
-    population_data = _load_ons_data('population', limit=100)
-    labour_data = _load_ons_data('labour market', limit=200)
-
-    if region:
-        region_lower = region.lower()
-        vacancy_filtered = [d for d in vacancy_data if region_lower in json.dumps(d).lower()]
-        neet_filtered = [d for d in neet_data if region_lower in json.dumps(d).lower()]
-        trade_filtered = [d for d in trade_data if region_lower in json.dumps(d).lower()]
-        population_filtered = [d for d in population_data if region_lower in json.dumps(d).lower()]
-        labour_filtered = [d for d in labour_data if region_lower in json.dumps(d).lower()]
-    else:
-        vacancy_filtered = vacancy_data
-        neet_filtered = neet_data
-        trade_filtered = trade_data
-        population_filtered = population_data
-        labour_filtered = labour_data
-
-    shortage_areas = []
-
-    vacancy_signal = _compute_signal_score(vacancy_filtered, lambda x: True)
-    if vacancy_signal['count'] > 5:
-        shortage_areas.append({
-            'area': 'Labour/Vacancies',
-            'signal': 'HIGH',
-            'detail': f'{vacancy_signal["count"]} vacancy-related datasets suggest persistent demand',
-            'titles': vacancy_signal['sample_titles'],
-        })
-
-    trade_signal = _compute_signal_score(trade_filtered, lambda x: True)
-    if trade_signal['count'] > 3:
-        shortage_areas.append({
-            'area': 'Trade/Skills',
-            'signal': 'NOTABLE',
-            'detail': f'{trade_signal["count"]} trade-related data points - possible skills gap',
-            'titles': trade_signal['sample_titles'],
-        })
-
-    neet_signal = _compute_signal_score(neet_filtered, lambda x: True)
-    if neet_signal['count'] > 3:
-        shortage_areas.append({
-            'area': 'NEET Youth',
-            'signal': 'WATCH',
-            'detail': f'{neet_signal["count"]} NEET data points - untapped labour potential',
-            'titles': neet_signal['sample_titles'],
-        })
-
-    pop_signal = _compute_signal_score(population_filtered, lambda x: True)
-    if pop_signal['count'] > 2:
-        shortage_areas.append({
-            'area': 'Population Growth Areas',
-            'signal': 'GROWING',
-            'detail': f'{pop_signal["count"]} population projection datasets - areas of growth',
-            'titles': pop_signal['sample_titles'],
-        })
-
-    labour_signal = _compute_signal_score(labour_filtered, lambda x: True)
-    if labour_signal['count'] > 5:
-        shortage_areas.append({
-            'area': 'Labour Market Shifts',
-            'signal': 'ACTIVE',
-            'detail': f'{labour_signal["count"]} labour market datasets showing movement',
-            'titles': labour_signal['sample_titles'],
-        })
-
-    if not shortage_areas:
-        shortage_areas.append({
-            'area': 'General',
-            'signal': 'LOW DATA',
-            'detail': 'Limited shortage signals in current dataset - try expanding region',
-        })
-
-    return {
-        'status': 'ok',
-        'region': region or 'National',
-        'shortage_areas': shortage_areas,
-        'total_data_points': len(vacancy_data) + len(neet_data) + len(trade_data) + len(population_data) + len(labour_data),
-        'data_sources': {
-            'vacancies': vacancy_signal['count'],
-            'neet': neet_signal['count'],
-            'trade': trade_signal['count'],
-            'population': pop_signal['count'],
-            'labour_market': labour_signal['count'],
-        },
-        'external_check': {
-            'datagovuk': _fetch_datagovuk(f'labour shortage {region or "UK"}'),
-        },
-        'recommendations': [
-            'Check ONS Vacancies and Jobs bulletin for real-time vacancy data',
-            'Review Migration Advisory Committee shortage occupation list',
-            'Cross-reference with Sector Skills Councils for industry-specific gaps',
-        ],
-    }
-
-
-def find_skill_opportunities(postcode, budget=None):
-    """What could I learn that's scarce."""
-    vacancy_data = _load_ons_data('vacancies', limit=200)
-    earnings_data = _load_ons_data('earnings', limit=200)
-    neet_data = _load_ons_data('NEET', limit=100)
-
-    postcode_upper = postcode.upper().strip()
-    district = postcode_upper.split()[0] if postcode_upper.split() else postcode_upper
-
-    skill_scores = {}
-    for trade in TRADE_KEYWORDS:
-        vacancy_count = sum(1 for d in vacancy_data if trade.lower() in json.dumps(d).lower())
-        earnings_count = sum(1 for d in earnings_data if trade.lower() in json.dumps(d).lower())
-        neet_count = sum(1 for d in neet_data if trade.lower() in json.dumps(d).lower())
-
-        demand_score = vacancy_count * 3 + earnings_count * 2
-        supply_inverse = max(1, 10 - neet_count)
-
-        skill_scores[trade] = {
-            'demand_signal': demand_score,
-            'supply_inverse': supply_inverse,
-            'opportunity_score': round(demand_score / supply_inverse, 1),
-            'vacancy_mentions': vacancy_count,
-            'earnings_mentions': earnings_count,
-        }
-
-    sorted_skills = sorted(skill_scores.items(), key=lambda x: x[1]['opportunity_score'], reverse=True)
-
-    top_opportunities = []
-    for skill, scores in sorted_skills[:10]:
-        if scores['opportunity_score'] > 0:
-            training_cost_estimates = {
-                'electrician': 5000, 'plumber': 4000, 'carpenter': 3500,
-                'bricklayer': 3000, 'welder': 2500, 'gas engineer': 4500,
-                'air conditioning': 3500, 'scaffolder': 2000, 'roofer': 2500,
-                'tiler': 2000, 'plasterer': 2500, 'painter': 1500,
-            }
-            est_cost = training_cost_estimates.get(skill, 3000)
-
-            if budget and est_cost > budget:
-                continue
-
-            top_opportunities.append({
-                'skill': skill,
-                'opportunity_score': scores['opportunity_score'],
-                'demand_signal': scores['demand_signal'],
-                'vacancy_mentions': scores['vacancy_mentions'],
-                'estimated_training_cost': f'~£{est_cost}',
-                'breakeven_months': round(est_cost / (scores['demand_signal'] * 10 + 1), 1),
-            })
-
-    return {
-        'status': 'ok',
-        'postcode': postcode_upper,
-        'district': district,
-        'budget': f'£{budget}' if budget else 'No limit',
-        'top_opportunities': top_opportunities,
-        'total_skills_analysed': len(TRADE_KEYWORDS),
-        'data_points': len(vacancy_data) + len(earnings_data) + len(neet_data),
-        'recommendations': [
-            'Higher opportunity_score = higher demand relative to supply',
-            'Check local colleges for certified courses in top skills',
-            'Consider CITB, City & Guilds, or NVQ qualifications',
-            f'Search data.gov.uk for {district} skills funding programmes',
-        ],
-    }
-
-
-def market_gap(business_type, city):
-    """Is there room for a business in a city."""
-    business_data = _load_ons_data('business', limit=200)
-    retail_data = _load_ons_data('retail', limit=200)
-    population_data = _load_ons_data('population', limit=100)
-    spending_data = _load_ons_data('spending', limit=100)
-
-    city_lower = city.lower()
-    business_keywords = business_type.lower().split()
-
-    city_business = [d for d in business_data if city_lower in json.dumps(d).lower()]
-    city_retail = [d for d in retail_data if city_lower in json.dumps(d).lower()]
-
-    type_match_business = [d for d in city_business if _keyword_match(json.dumps(d), business_keywords)]
-    type_match_retail = [d for d in city_retail if _keyword_match(json.dumps(d), business_keywords)]
-
-    existing_count = len(type_match_business) + len(type_match_retail)
-    total_city_business = len(city_business)
-    total_city_retail = len(city_retail)
-
-    if existing_count == 0:
-        gap_signal = 'STRONG GAP'
-        assessment = f'No {business_type} data found for {city} - potential first-mover advantage'
-    elif existing_count < 3:
-        gap_signal = 'MODERATE GAP'
-        assessment = f'Limited {business_type} presence in {city} - room for differentiated competitor'
-    else:
-        gap_signal = 'SATURATED'
-        assessment = f'Existing {business_type} activity in {city} - niche or innovation required'
-
-    spending_match = _compute_signal_score(spending_data, lambda x: _keyword_match(json.dumps(x), business_keywords))
-
-    pop_match = _compute_signal_score(population_data, lambda x: city_lower in json.dumps(x).lower())
-
-    datagovuk_results = _fetch_datagovuk(f'{business_type} business {city}')
-    london_results = _fetch_london_datastore(f'{business_type} {city}') if city_lower in ('london', 'westminster', 'camden', 'islington', 'hackney', 'tower hamlets') else []
-
-    return {
-        'status': 'ok',
-        'business_type': business_type,
-        'city': city.title(),
-        'gap_signal': gap_signal,
-        'assessment': assessment,
-        'market_data': {
-            'existing_business_mentions': existing_count,
-            'total_city_business_data': total_city_business,
-            'total_city_retail_data': total_city_retail,
-            'spending_signals': spending_match['count'],
-            'population_signals': pop_match['count'],
-        },
-        'external_sources': {
-            'datagovuk': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in datagovuk_results[:3]],
-            'london_datastore': [{'title': r.get('title', ''), 'url': r.get('url', '')} for r in london_results[:3]],
-        },
-        'recommended_research': [
-            f'ONS UK Business: Activity, Size and Location for {city}',
-            f'ONS Retail Sales Index for consumer spending trends',
-            f'Check local council licensing/planning data for {city}',
-            f'Populus/Fusion Brick data for local demographics',
-        ],
-    }
-
-
-def wage_growth_map(region=None, occupation=None):
-    """Where wages are rising fastest."""
-    earnings_data = _load_ons_data('earnings', limit=200)
-    ashe_data = _load_ons_data('annual survey of hours and earnings', limit=100)
-
-    if occupation:
-        earnings_filtered = [d for d in earnings_data if occupation.lower() in json.dumps(d).lower()]
-        ashe_filtered = [d for d in ashe_data if occupation.lower() in json.dumps(d).lower()]
-    else:
-        earnings_filtered = earnings_data
-        ashe_filtered = ashe_data
-
-    region_wages = {}
-    uk_regions = [
-        'london', 'south east', 'south west', 'east midlands', 'west midlands',
-        'north west', 'north east', 'yorkshire and the humber', 'east of england',
-        'scotland', 'wales', 'northern ireland',
-    ]
-
-    for reg in uk_regions:
-        reg_earnings = [d for d in earnings_filtered if reg in json.dumps(d).lower()]
-        reg_ashe = [d for d in ashe_filtered if reg in json.dumps(d).lower()]
-
-        total_mentions = len(reg_earnings) + len(reg_ashe)
-
-        region_wages[reg.title()] = {
-            'earnings_data_points': len(reg_earnings),
-            'ashe_data_points': len(reg_ashe),
-            'total_signal': total_mentions,
-        }
-
-    if region:
-        region_lower = region.lower()
-        focused = {k: v for k, v in region_wages.items() if region_lower in k.lower()}
-        if not focused:
-            focused = region_wages
-    else:
-        focused = region_wages
-
-    sorted_regions = sorted(focused.items(), key=lambda x: x[1]['total_signal'], reverse=True)
-
-    growth_indicators = []
-    for reg_name, data in sorted_regions:
-        if data['total_signal'] > 3:
-            growth_indicators.append({
-                'region': reg_name,
-                'signal_strength': 'STRONG' if data['total_signal'] > 6 else 'MODERATE',
-                'data_coverage': data['total_signal'],
-                'earnings_mentions': data['earnings_data_points'],
-                'ashe_mentions': data['ashe_data_points'],
-            })
-
-    return {
-        'status': 'ok',
-        'region': region or 'All UK regions',
-        'occupation': occupation or 'All occupations',
-        'growth_indicators': growth_indicators,
-        'full_breakdown': dict(sorted_regions),
-        'data_sources': {
-            'earnings_bulletins': len(earnings_filtered),
-            'ashe_datasets': len(ashe_filtered),
-        },
-        'note': 'Signal strength reflects data availability and mentions. Higher signal = more active wage reporting for that region.',
-        'recommended_actions': [
-            'Check ONS ASHE for detailed regional earnings tables',
-            'Review ONS Employee Earnings bulletin for latest quarterly data',
-            f'data.gov.uk search for {occupation or "earnings"} {region or "regional"} data',
-        ],
-    }
 
 
 # ============================================================
@@ -1048,8 +1662,15 @@ def run_mcp_stdio():
                 "result": {
                     "protocolVersion": "2024-11-05",
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "ukgraph", "version": "1.0.0",
-                                   "description": "UKGraph — UK markets intelligence. Find career opportunities, business gaps, trade demand, regulation impacts."},
+                    "serverInfo": {
+                        "name": "ukgraph",
+                        "version": "2.0.0",
+                        "description": (
+                            "UKGraph — UK markets intelligence. PR5 truth contract. "
+                            "All tools return honest truth_class ratings. "
+                            "Use data_status() to see what data is available."
+                        ),
+                    },
                 },
             }
         elif method == "tools/list":
@@ -1073,4 +1694,4 @@ if __name__ == '__main__':
         result = handle_tool_call(sys.argv[1], json.loads(sys.argv[2]))
         print(json.dumps(result, indent=2, default=str))
     else:
-        print(json.dumps({"name": "ukgraph", "tools": [t["name"] for t in TOOLS]}, indent=2))
+        print(json.dumps({"name": "ukgraph", "version": "2.0.0", "tools": [t["name"] for t in TOOLS]}, indent=2))
