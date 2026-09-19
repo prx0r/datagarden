@@ -64,3 +64,36 @@ OLDHAM_SERVICES = [
         "workflows": ["oldham.electoral.register"],
     },
 ]
+
+OLDHAM_LOCAL_WORKFLOWS = [
+    {
+        "workflow_id": "oldham.council_tax.move_home",
+        "name": "Notify Oldham Council of move",
+        "extends": "national.council_tax.move_home",
+        "local_url": "https://www.oldham.gov.uk/info/200198/council_tax/1406/changing_address",
+        "local_requirements": ["council_tax_reference"],
+        "local_override": True,
+    },
+    {
+        "workflow_id": "oldham.waste.missed_bin",
+        "name": "Report missed bin collection",
+        "national": False,
+        "url": "https://www.oldham.gov.uk/info/200200/waste_and_recycling",
+        "requires": ["uprn", "bin_type"],
+        "steps": [
+            {"step": "navigate", "url": "https://www.oldham.gov.uk/info/200200/waste_and_recycling", "action_class": "PREPARE"},
+            {"step": "report", "action_class": "USER_HANDOFF", "note": "Complete form on council website"},
+        ],
+    },
+    {
+        "workflow_id": "oldham.parking.permit",
+        "name": "Apply for parking permit",
+        "national": False,
+        "url": "https://www.oldham.gov.uk/info/200201/parking",
+        "requires": ["vehicle_registration", "proof_of_address"],
+        "steps": [
+            {"step": "navigate", "url": "https://www.oldham.gov.uk/info/200201/parking", "action_class": "PREPARE"},
+            {"step": "apply", "action_class": "USER_HANDOFF", "note": "Complete application on council website"},
+        ],
+    },
+]

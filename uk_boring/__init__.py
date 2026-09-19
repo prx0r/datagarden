@@ -17,7 +17,13 @@ from uk_boring.ontology import (
     Offer,
     Signal,
 )
-from uk_boring.oldham import OLDHAM, OLDHAM_SERVICES
+from uk_boring.oldham import OLDHAM, OLDHAM_SERVICES, OLDHAM_LOCAL_WORKFLOWS
+from uk_boring.national import (
+    NationalWorkflow,
+    NATIONAL_WORKFLOWS,
+    get_national_workflow,
+    list_national_workflows,
+)
 
 __all__ = [
     "Place",
@@ -36,4 +42,9 @@ __all__ = [
     "Signal",
     "OLDHAM",
     "OLDHAM_SERVICES",
+    "OLDHAM_LOCAL_WORKFLOWS",
+    "NationalWorkflow",
+    "NATIONAL_WORKFLOWS",
+    "get_national_workflow",
+    "list_national_workflows",
 ]

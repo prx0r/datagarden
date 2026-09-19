@@ -60,32 +60,15 @@ class MoveHomeWorkflow:
             WorkflowStep(
                 step_id="resolve_place",
                 name="Resolve new place",
-                description="Look up UPRN/postcode → council, services, applicable rules",
+                description="Look up UPRN/postcode -> council, services, applicable rules",
                 action_class="AUTO",
                 execution_mode="api",
                 depends_on=[],
                 required_info=["new_postcode"],
             ),
             WorkflowStep(
-                step_id="council_tax_move",
-                name="Notify council tax",
-                description="Tell Oldham Council about the move",
-                action_class="APPROVAL_REQUIRED",
-                execution_mode="browser",
-                depends_on=["resolve_place"],
-                required_info=["council_tax_reference", "move_date", "new_address"],
-                official_url="https://www.oldham.gov.uk/info/200198/council_tax/1406/changing_address",
-                receipt_pattern={
-                    "type": "confirmation_page",
-                    "fields": [
-                        {"name": "reference", "exists": True},
-                        {"name": "status", "contains": "updated"},
-                    ],
-                },
-            ),
-            WorkflowStep(
                 step_id="dvla_address",
-                name="Update driving licence address",
+                name="Update driving licence",
                 description="Change address on DVLA driving licence",
                 action_class="APPROVAL_REQUIRED",
                 execution_mode="browser",
@@ -93,10 +76,8 @@ class MoveHomeWorkflow:
                 required_info=["full_name", "new_address"],
                 official_url="https://www.gov.uk/change-address-driving-licence",
                 receipt_pattern={
-                    "type": "confirmation_page",
                     "fields": [
                         {"name": "reference", "pattern": "DL-\\d{4}-\\d{5}"},
-                        {"name": "status", "contains": "application"},
                     ],
                 },
             ),
@@ -109,17 +90,10 @@ class MoveHomeWorkflow:
                 depends_on=["resolve_place"],
                 required_info=["full_name", "new_address", "national_insurance_number"],
                 official_url="https://www.gov.uk/register-to-vote",
-                receipt_pattern={
-                    "type": "confirmation_page",
-                    "fields": [
-                        {"name": "reference", "exists": True},
-                        {"name": "status", "contains": "registered"},
-                    ],
-                },
             ),
             WorkflowStep(
                 step_id="hmrc_address",
-                name="Update HMRC address",
+                name="Update HMRC",
                 description="Notify HMRC of new address for tax purposes",
                 action_class="USER_HANDOFF",
                 execution_mode="browser",
@@ -129,7 +103,7 @@ class MoveHomeWorkflow:
             ),
             WorkflowStep(
                 step_id="vehicle_tax",
-                name="Update vehicle tax address",
+                name="Update vehicle tax",
                 description="Update address on DVLA vehicle tax",
                 action_class="APPROVAL_REQUIRED",
                 execution_mode="browser",
@@ -137,12 +111,34 @@ class MoveHomeWorkflow:
                 required_info=["vehicle_registration", "new_address"],
                 official_url="https://www.gov.uk/vehicle-tax",
                 receipt_pattern={
-                    "type": "confirmation_page",
                     "fields": [
-                        {"name": "vehicle_registration", "exists": True},
                         {"name": "tax_status", "one_of": ["taxed", "SORN"]},
                     ],
                 },
+            ),
+            WorkflowStep(
+                step_id="council_tax_move",
+                name="Notify council tax",
+                description="Tell council about the move",
+                action_class="APPROVAL_REQUIRED",
+                execution_mode="browser",
+                depends_on=["resolve_place"],
+                required_info=["council_tax_reference", "move_date", "new_address"],
+                official_url="https://www.oldham.gov.uk/info/200198/council_tax/1406/changing_address",
+                receipt_pattern={
+                    "fields": [
+                        {"name": "reference", "exists": True},
+                    ],
+                },
+            ),
+            WorkflowStep(
+                step_id="waste_notify",
+                name="Notify waste collection",
+                description="Notify waste collection service of move",
+                action_class="PREPARE",
+                execution_mode="browser",
+                depends_on=["resolve_place"],
+                official_url="https://www.oldham.gov.uk/info/200200/waste_and_recycling",
             ),
         ]
 
