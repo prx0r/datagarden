@@ -1,3 +1,4 @@
+<!-- STALE: This document describes an earlier naming scheme or unimplemented concept. Preserved for context. Current architecture is in ukgraph_final.md and SPEC.md. -->
 # Data Garden Candidates — 2030 AGI Hindsight Filter
 
 ## The filter

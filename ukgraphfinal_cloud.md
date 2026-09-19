@@ -1,3 +1,4 @@
+<!-- DUPLICATE: This file is an exact copy of SPEC.md. Preserved for Cloudflare R2 reference. -->
 This freezes the strongest conclusions while preserving the original Data Garden invariant: **unique transformation × continuous collection × time**, and “only collect data when we can continuously transform it into a proprietary measurement worth preserving.” 
 
 # UKGraph
