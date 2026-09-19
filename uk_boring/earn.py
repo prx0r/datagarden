@@ -33,7 +33,10 @@ def _get_or_key():
 
 
 def _jev_classify(state: dict, questions: dict) -> dict:
-    """Call Jev via OpenRouter to classify something."""
+    """Call Jev via OpenRouter to classify something.
+    
+    Logs every call for audit and calibration.
+    """
     key = _get_or_key()
     if not key:
         return {}
@@ -53,10 +56,46 @@ def _jev_classify(state: dict, questions: dict) -> dict:
         )
         if resp.status_code == 200:
             data = resp.json()
-            return data.get('answers', {})
+            answers = data.get('answers', {})
+            
+            # Log the Jev call for audit
+            _log_jev_call(
+                spec_id='opportunity.capability_family',
+                spec_version='1.0',
+                state=state,
+                questions=questions,
+                answers=answers,
+            )
+            
+            return answers
     except Exception:
         pass
     return {}
+
+
+def _log_jev_call(spec_id, spec_version, state, questions, answers, source_obs_ids=None):
+    """Log every Jev call for audit and calibration."""
+    log_entry = {
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'spec_id': spec_id,
+        'spec_version': spec_version,
+        'state_preview': str(state)[:200],
+        'questions': list(questions.keys()),
+        'answers': {},
+        'source_observation_ids': source_obs_ids or [],
+    }
+    for k, v in answers.items():
+        if isinstance(v, dict):
+            log_entry['answers'][k] = {
+                'type': v.get('type'),
+                'value': v.get('score') or v.get('choice') or v.get('noul'),
+                'confidence': v.get('confidence'),
+            }
+    
+    log_path = Path(__file__).parent.parent / 'experiments' / 'jev_logs' / f'{datetime.now().strftime("%Y-%m-%d")}.jsonl'
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(log_path, 'a') as f:
+        f.write(json.dumps(log_entry, default=str) + '\n')
 
 
 def _classify_opportunity(description: str, skills: list) -> dict:

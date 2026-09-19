@@ -1,0 +1,1 @@
+{"timestamp": "2026-09-19T15:48:38.461823+00:00", "spec_id": "opportunity.capability_family", "spec_version": "1.0", "state_hash": 2386497447357765660, "questions": ["relevance"], "answers": {"relevance": {"type": "score", "value": 3.02, "confidence": 0.78}}, "source_observation_ids": ["obs-123"]}
