@@ -212,6 +212,7 @@ def find_earn_opportunities(profile: CapabilityEnvelope) -> list:
     opportunities.extend(_find_flips(profile, freshness))
     opportunities.extend(_find_service_gaps(profile, freshness))
     opportunities.extend(_find_upgrades(profile, freshness))
+    opportunities.extend(_find_complaint_opportunities(profile, freshness))
 
     opportunities.sort(key=lambda o: o.confidence * o.estimated_value_gbp, reverse=True)
 
@@ -448,6 +449,47 @@ def _find_upgrades(profile: CapabilityEnvelope, freshness: dict) -> list:
             ))
 
     return upgrades
+
+
+def _find_complaint_opportunities(profile: CapabilityEnvelope, freshness: dict) -> list:
+    """Find opportunities based on complaint data.
+    
+    Complaints reveal where workflows are broken.
+    Fixing broken workflows is an opportunity.
+    """
+    opportunities = []
+    
+    try:
+        from core.normalize import load_observations
+        complaints = load_observations('ukadmin', source='dwp_complaints', limit=1000)
+        
+        # Find services with high complaint rates
+        service_complaints = {}
+        for obs in complaints:
+            value = obs.get('value', {})
+            area = value.get('area', '')
+            count = value.get('complaints', 0)
+            if area and count:
+                service_complaints[area] = service_complaints.get(area, 0) + count
+        
+        # Sort by complaint volume
+        for area, count in sorted(service_complaints.items(), key=lambda x: x[1], reverse=True)[:5]:
+            if count > 500:  # Only high-complaint services
+                opportunities.append(Opportunity(
+                    action='OFFER_SERVICE',
+                    title=f"Improve {area} workflow",
+                    description=f"{area} has {count} complaints/quarter. Improving this workflow saves people time.",
+                    estimated_value_gbp=0,  # Value is time saved, not direct payment
+                    confidence=0.4,
+                    source='dwp_complaints_canonical',
+                    evidence=[f"{area}: {count} complaints/quarter"],
+                    provenance=[],
+                    freshness={},
+                ))
+    except Exception:
+        pass
+    
+    return opportunities[:3]
 
 
 def _matches_skills_text(text: str, profile: CapabilityEnvelope) -> bool:
