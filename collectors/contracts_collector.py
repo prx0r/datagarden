@@ -14,8 +14,44 @@ API_BASE = "https://www.contractsfinder.service.gov.uk/api"
 DATA_DIR = Path(__file__).parent.parent / 'forests' / 'ukgraph' / 'data' / 'contracts'
 
 
+def collect_live_opportunities(days: int = 30, limit: int = 100) -> list:
+    """Collect LIVE/FUTURE procurement opportunities (not historical awards)."""
+    results = []
+    try:
+        start = (date.today() - timedelta(days=days)).isoformat()
+        
+        payload = {
+            "searchCriteria": {
+                "types": ["Contract"],
+                "statuses": ["Open", "Pending"],  # LIVE opportunities only
+                "publishedFrom": f"{start}T00:00:00+01:00",
+            },
+            "size": min(limit, 100),
+        }
+        
+        resp = requests.post(
+            f"{API_BASE}/rest/2/search_notices/JSON",
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=30,
+        )
+        
+        if resp.status_code == 200:
+            data = resp.json()
+            records = data.get('noticeList', [])
+            if isinstance(records, list):
+                for record in records[:limit]:
+                    results.append({
+                        'type': 'PROCUREMENT_OPPORTUNITY',  # NOT Award
+                        **normalize_contract(record),
+                    })
+    except Exception as e:
+        print(f"  Error: {e}")
+    return results
+
+
 def collect_recent_contracts(days: int = 30, limit: int = 100) -> list:
-    """Collect recent contract awards."""
+    """Collect historical contract awards (intelligence only, NOT for bidding)."""
     results = []
     try:
         start = (date.today() - timedelta(days=days)).isoformat()
