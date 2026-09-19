@@ -20,6 +20,7 @@ from .storage import (
     search_observations,
     DATA_ROOT,
 )
+from .quality import QualityState, QualityAssessment, FreshnessChecker, QualityGate
 
 __all__ = [
     # Core data classes
@@ -49,9 +50,14 @@ __all__ = [
     "Consequence",
     "Fallback",
     "Actuality",
+    "QualityState",
     # Data classes
     "Evidence",
     "Freshness",
+    "QualityAssessment",
+    # Quality classes
+    "FreshnessChecker",
+    "QualityGate",
     # Constants
     "PROOF_RULES",
     # Storage functions
