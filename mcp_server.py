@@ -655,7 +655,7 @@ def ukgraph_salary_data(occupation: str, region: str = None) -> dict:
 
 def pow_network_status(network: str) -> dict:
     """Get network status from powpowpow data."""
-    chain_dir = Path('/home/box/powpowpow/chains') / network.lower()
+    chain_dir = Path(os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')) / 'chains' / network.lower()
     data_file = chain_dir / f'{network.lower()}_data.json'
 
     if not data_file.exists():
@@ -667,10 +667,10 @@ def pow_network_status(network: str) -> dict:
     price = data.get('price', {})
     price_usd = price.get('usd', 0) if isinstance(price, dict) else price
 
-    registry_file = Path('/home/box/powpowpow/v1_registry.py')
+    registry_file = Path(os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')) / 'v1_registry.py'
     coin_info = {}
     if registry_file.exists():
-        sys.path.insert(0, '/home/box/powpowpow')
+        sys.path.insert(0, os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))
         try:
             from v1_registry import get_v1_coin
             coin_info = get_v1_coin(network.upper()) or {}
@@ -689,13 +689,13 @@ def pow_network_status(network: str) -> dict:
 
 def pow_mining_profitability(network: str, hardware: str, electricity_cost: float = 0.10) -> dict:
     """Calculate mining profitability."""
-    sys.path.insert(0, '/home/box/powpowpow')
+    sys.path.insert(0, os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))
     try:
         from v1_live_cards import generate_card
     except ImportError:
         return {"status": "error", "message": "Cannot import v1_live_cards from powpowpow"}
 
-    data_file = Path(f'/home/box/powpowpow/chains/{network.lower()}/{network.lower()}_data.json')
+    data_file = Path(f"{os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')}/chains/{network.lower()}/{network.lower()}_data.json')
     if not data_file.exists():
         return {"status": "not_found", "network": network}
 
@@ -718,7 +718,7 @@ def pow_mining_profitability(network: str, hardware: str, electricity_cost: floa
 
 def pow_best_mining(hardware: str, electricity_cost: float = 0.10) -> dict:
     """Find best mining option for hardware."""
-    sys.path.insert(0, '/home/box/powpowpow')
+    sys.path.insert(0, os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))
     try:
         from v1_live_cards import generate_card
     except ImportError:
@@ -729,7 +729,7 @@ def pow_best_mining(hardware: str, electricity_cost: float = 0.10) -> dict:
     chains = ['PRL', 'QUBIC', 'XMR', 'KAS', 'QUAN']
 
     for chain in chains:
-        data_file = Path(f'/home/box/powpowpow/chains/{chain.lower()}/{chain.lower()}_data.json')
+        data_file = Path(f"{os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')}/chains/{chain.lower()}/{chain.lower()}_data.json')
         if not data_file.exists():
             continue
 
@@ -753,7 +753,7 @@ def pow_best_mining(hardware: str, electricity_cost: float = 0.10) -> dict:
 
 def pow_compare_networks(networks: list, hardware: str = None) -> dict:
     """Compare networks."""
-    sys.path.insert(0, '/home/box/powpowpow')
+    sys.path.insert(0, os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))
     try:
         from v1_live_cards import generate_card
     except ImportError:
@@ -761,7 +761,7 @@ def pow_compare_networks(networks: list, hardware: str = None) -> dict:
 
     results = []
     for network in networks:
-        data_file = Path(f'/home/box/powpowpow/chains/{network.lower()}/{network.lower()}_data.json')
+        data_file = Path(f"{os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')}/chains/{network.lower()}/{network.lower()}_data.json')
         if not data_file.exists():
             results.append({"network": network, "status": "no_data"})
             continue
@@ -786,7 +786,7 @@ def pow_compare_networks(networks: list, hardware: str = None) -> dict:
 
 def pow_all_networks() -> dict:
     """Get all network cards."""
-    sys.path.insert(0, '/home/box/powpowpow')
+    sys.path.insert(0, os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))
     try:
         from v1_live_cards import generate_card
     except ImportError:
@@ -794,7 +794,7 @@ def pow_all_networks() -> dict:
 
     cards = {}
     for chain in ['PRL', 'QUBIC', 'QUAN', 'XMR', 'KAS']:
-        data_file = Path(f'/home/box/powpowpow/chains/{chain.lower()}/{chain.lower()}_data.json')
+        data_file = Path(f"{os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')}/chains/{chain.lower()}/{chain.lower()}_data.json')
         if data_file.exists():
             with open(data_file) as f:
                 data = json.load(f)
@@ -842,7 +842,7 @@ def garden_health() -> dict:
     }
 
     # PowPowPow
-    chains_dir = Path('/home/box/powpowpow/chains')
+    chains_dir = Path(os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')) / 'chains'
     chain_data_files = list(chains_dir.glob('*/*_data.json')) if chains_dir.exists() else []
     gardens['powpowpow'] = {
         "chain_files": len(chain_data_files),

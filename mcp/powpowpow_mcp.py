@@ -29,7 +29,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict
 
-ROOT = Path('/home/box/powpowpow')
+ROOT = Path(os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))
 CHAINS_DIR = ROOT / 'chains'
 sys.path.insert(0, str(ROOT))
 

@@ -28,13 +28,13 @@ import requests
 # ---------------------------------------------------------------------------
 BASE_DIR = '/home/box/datagarden'
 FOREST_DIR = os.path.join(BASE_DIR, 'forests', 'powpowpow', 'data', 'historical')
-POWPOWPOW_CHAINS = '/home/box/powpowpow/chains'
+POWPOWPOW_CHAINS = os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow') + '/chains'
 
 # ---------------------------------------------------------------------------
 # Imports from existing powpowpow modules (best-effort)
 # ---------------------------------------------------------------------------
 try:
-    sys.path.insert(0, '/home/box/powpowpow')
+    sys.path.insert(0, os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))
     from coins import COINS, get_all_symbols
     from v1_registry import V1, get_v1_symbols
 except ImportError:

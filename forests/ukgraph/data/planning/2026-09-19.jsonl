@@ -1,0 +1,337 @@
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609689", "data": {"entity": 626001, "name": "County Durham LPA", "reference": "E60000001"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609770", "data": {"entity": 626002, "name": "Darlington LPA", "reference": "E60000002"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609816", "data": {"entity": 626003, "name": "Hartlepool LPA", "reference": "E60000003"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609849", "data": {"entity": 626004, "name": "Middlesbrough LPA", "reference": "E60000004"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609877", "data": {"entity": 626005, "name": "Northumberland LPA", "reference": "E60000005"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609908", "data": {"entity": 626006, "name": "Redcar and Cleveland LPA", "reference": "E60000006"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609937", "data": {"entity": 626007, "name": "Stockton-on-Tees LPA", "reference": "E60000007"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609966", "data": {"entity": 626008, "name": "Gateshead LPA", "reference": "E60000008"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.609994", "data": {"entity": 626009, "name": "Newcastle upon Tyne LPA", "reference": "E60000009"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610023", "data": {"entity": 626010, "name": "North Tyneside LPA", "reference": "E60000010"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610052", "data": {"entity": 626011, "name": "South Tyneside LPA", "reference": "E60000011"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610081", "data": {"entity": 626012, "name": "Sunderland LPA", "reference": "E60000012"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610113", "data": {"entity": 626013, "name": "Blackburn with Darwen LPA", "reference": "E60000013"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610139", "data": {"entity": 626014, "name": "Blackpool LPA", "reference": "E60000014"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610166", "data": {"entity": 626015, "name": "Cheshire East LPA", "reference": "E60000015"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610191", "data": {"entity": 626016, "name": "Cheshire West and Chester LPA", "reference": "E60000016"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610219", "data": {"entity": 626017, "name": "Halton LPA", "reference": "E60000017"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610249", "data": {"entity": 626018, "name": "Warrington LPA", "reference": "E60000018"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610279", "data": {"entity": 626019, "name": "Allerdale LPA", "reference": "E60000019"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610307", "data": {"entity": 626020, "name": "Barrow-in-Furness LPA", "reference": "E60000020"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610336", "data": {"entity": 626021, "name": "Carlisle LPA", "reference": "E60000021"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610362", "data": {"entity": 626022, "name": "Copeland LPA", "reference": "E60000022"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610387", "data": {"entity": 626023, "name": "Eden LPA", "reference": "E60000023"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610414", "data": {"entity": 626024, "name": "South Lakeland LPA", "reference": "E60000024"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610442", "data": {"entity": 626025, "name": "Bolton LPA", "reference": "E60000025"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610470", "data": {"entity": 626026, "name": "Bury LPA", "reference": "E60000026"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610648", "data": {"entity": 626027, "name": "Manchester LPA", "reference": "E60000027"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610682", "data": {"entity": 626028, "name": "Oldham LPA", "reference": "E60000028"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610712", "data": {"entity": 626029, "name": "Rochdale LPA", "reference": "E60000029"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610741", "data": {"entity": 626030, "name": "Salford LPA", "reference": "E60000030"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610770", "data": {"entity": 626031, "name": "Stockport LPA", "reference": "E60000031"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610798", "data": {"entity": 626032, "name": "Tameside LPA", "reference": "E60000032"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610828", "data": {"entity": 626033, "name": "Trafford LPA", "reference": "E60000033"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610856", "data": {"entity": 626034, "name": "Wigan LPA", "reference": "E60000034"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610896", "data": {"entity": 626035, "name": "Burnley LPA", "reference": "E60000035"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610925", "data": {"entity": 626036, "name": "Chorley LPA", "reference": "E60000036"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610951", "data": {"entity": 626037, "name": "Fylde LPA", "reference": "E60000037"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610975", "data": {"entity": 626038, "name": "Hyndburn LPA", "reference": "E60000038"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.610999", "data": {"entity": 626039, "name": "Lancaster LPA", "reference": "E60000039"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611025", "data": {"entity": 626040, "name": "Pendle LPA", "reference": "E60000040"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611053", "data": {"entity": 626041, "name": "Preston LPA", "reference": "E60000041"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611080", "data": {"entity": 626042, "name": "Ribble Valley LPA", "reference": "E60000042"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611107", "data": {"entity": 626043, "name": "Rossendale LPA", "reference": "E60000043"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611134", "data": {"entity": 626044, "name": "South Ribble LPA", "reference": "E60000044"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611162", "data": {"entity": 626045, "name": "West Lancashire LPA", "reference": "E60000045"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611190", "data": {"entity": 626046, "name": "Wyre LPA", "reference": "E60000046"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611219", "data": {"entity": 626047, "name": "Knowsley LPA", "reference": "E60000047"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611248", "data": {"entity": 626048, "name": "Liverpool LPA", "reference": "E60000048"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611276", "data": {"entity": 626049, "name": "Sefton LPA", "reference": "E60000049"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611305", "data": {"entity": 626050, "name": "St. Helens LPA", "reference": "E60000050"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611333", "data": {"entity": 626051, "name": "Wirral LPA", "reference": "E60000051"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611362", "data": {"entity": 626052, "name": "East Riding of Yorkshire LPA", "reference": "E60000052"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611390", "data": {"entity": 626053, "name": "Kingston upon Hull, City of LPA", "reference": "E60000053"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611420", "data": {"entity": 626054, "name": "North East Lincolnshire LPA", "reference": "E60000054"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611446", "data": {"entity": 626055, "name": "North Lincolnshire LPA", "reference": "E60000055"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611594", "data": {"entity": 626056, "name": "York LPA", "reference": "E60000056"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611633", "data": {"entity": 626057, "name": "Craven LPA", "reference": "E60000057"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611665", "data": {"entity": 626058, "name": "Hambleton LPA", "reference": "E60000058"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611697", "data": {"entity": 626059, "name": "Harrogate LPA", "reference": "E60000059"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611727", "data": {"entity": 626060, "name": "Richmondshire LPA", "reference": "E60000060"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611755", "data": {"entity": 626061, "name": "Ryedale LPA", "reference": "E60000061"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611782", "data": {"entity": 626062, "name": "Scarborough LPA", "reference": "E60000062"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611806", "data": {"entity": 626063, "name": "Selby LPA", "reference": "E60000063"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611830", "data": {"entity": 626064, "name": "Barnsley LPA", "reference": "E60000064"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611857", "data": {"entity": 626065, "name": "Doncaster LPA", "reference": "E60000065"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611883", "data": {"entity": 626066, "name": "Rotherham LPA", "reference": "E60000066"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611909", "data": {"entity": 626067, "name": "Sheffield LPA", "reference": "E60000067"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611935", "data": {"entity": 626068, "name": "Bradford LPA", "reference": "E60000068"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611958", "data": {"entity": 626069, "name": "Calderdale LPA", "reference": "E60000069"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.611984", "data": {"entity": 626070, "name": "Kirklees LPA", "reference": "E60000070"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612010", "data": {"entity": 626071, "name": "Leeds LPA", "reference": "E60000071"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612036", "data": {"entity": 626072, "name": "Wakefield LPA", "reference": "E60000072"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612064", "data": {"entity": 626073, "name": "Derby LPA", "reference": "E60000073"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612090", "data": {"entity": 626074, "name": "Leicester LPA", "reference": "E60000074"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612116", "data": {"entity": 626075, "name": "Nottingham LPA", "reference": "E60000075"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612145", "data": {"entity": 626076, "name": "Rutland LPA", "reference": "E60000076"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612173", "data": {"entity": 626077, "name": "Amber Valley LPA", "reference": "E60000077"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612201", "data": {"entity": 626078, "name": "Bolsover LPA", "reference": "E60000078"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612229", "data": {"entity": 626079, "name": "Chesterfield LPA", "reference": "E60000079"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612255", "data": {"entity": 626080, "name": "Derbyshire Dales LPA", "reference": "E60000080"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612285", "data": {"entity": 626081, "name": "Erewash LPA", "reference": "E60000081"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612313", "data": {"entity": 626082, "name": "High Peak LPA", "reference": "E60000082"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612340", "data": {"entity": 626083, "name": "North East Derbyshire LPA", "reference": "E60000083"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612368", "data": {"entity": 626084, "name": "South Derbyshire LPA", "reference": "E60000084"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612395", "data": {"entity": 626085, "name": "Blaby LPA", "reference": "E60000085"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612422", "data": {"entity": 626086, "name": "Charnwood LPA", "reference": "E60000086"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612447", "data": {"entity": 626087, "name": "Harborough LPA", "reference": "E60000087"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612474", "data": {"entity": 626088, "name": "Hinckley and Bosworth LPA", "reference": "E60000088"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612502", "data": {"entity": 626089, "name": "Melton LPA", "reference": "E60000089"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612528", "data": {"entity": 626090, "name": "North West Leicestershire LPA", "reference": "E60000090"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612555", "data": {"entity": 626091, "name": "Oadby and Wigston LPA", "reference": "E60000091"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612580", "data": {"entity": 626092, "name": "Boston LPA", "reference": "E60000092"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612607", "data": {"entity": 626093, "name": "East Lindsey LPA", "reference": "E60000093"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612635", "data": {"entity": 626094, "name": "Lincoln LPA", "reference": "E60000094"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612662", "data": {"entity": 626095, "name": "North Kesteven LPA", "reference": "E60000095"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612688", "data": {"entity": 626096, "name": "South Holland LPA", "reference": "E60000096"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612715", "data": {"entity": 626097, "name": "South Kesteven LPA", "reference": "E60000097"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612742", "data": {"entity": 626098, "name": "West Lindsey LPA", "reference": "E60000098"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612768", "data": {"entity": 626099, "name": "Corby LPA", "reference": "E60000099"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612795", "data": {"entity": 626100, "name": "Daventry LPA", "reference": "E60000100"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612821", "data": {"entity": 626101, "name": "East Northamptonshire LPA", "reference": "E60000101"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612849", "data": {"entity": 626102, "name": "Kettering LPA", "reference": "E60000102"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612874", "data": {"entity": 626103, "name": "Northampton LPA", "reference": "E60000103"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612902", "data": {"entity": 626104, "name": "South Northamptonshire LPA", "reference": "E60000104"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612928", "data": {"entity": 626105, "name": "Wellingborough LPA", "reference": "E60000105"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612955", "data": {"entity": 626106, "name": "Ashfield LPA", "reference": "E60000106"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.612980", "data": {"entity": 626107, "name": "Bassetlaw LPA", "reference": "E60000107"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613006", "data": {"entity": 626108, "name": "Broxtowe LPA", "reference": "E60000108"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613030", "data": {"entity": 626109, "name": "Gedling LPA", "reference": "E60000109"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613054", "data": {"entity": 626110, "name": "Mansfield LPA", "reference": "E60000110"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613078", "data": {"entity": 626111, "name": "Newark and Sherwood LPA", "reference": "E60000111"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613242", "data": {"entity": 626112, "name": "Rushcliffe LPA", "reference": "E60000112"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613281", "data": {"entity": 626113, "name": "Herefordshire, County of LPA", "reference": "E60000113"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613311", "data": {"entity": 626114, "name": "Shropshire LPA", "reference": "E60000114"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613337", "data": {"entity": 626115, "name": "Stoke-on-Trent LPA", "reference": "E60000115"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613362", "data": {"entity": 626116, "name": "Telford and Wrekin LPA", "reference": "E60000116"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613389", "data": {"entity": 626117, "name": "Cannock Chase LPA", "reference": "E60000117"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613412", "data": {"entity": 626118, "name": "East Staffordshire LPA", "reference": "E60000118"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613438", "data": {"entity": 626119, "name": "Lichfield LPA", "reference": "E60000119"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613463", "data": {"entity": 626120, "name": "Newcastle-under-Lyme LPA", "reference": "E60000120"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613490", "data": {"entity": 626121, "name": "South Staffordshire LPA", "reference": "E60000121"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613517", "data": {"entity": 626122, "name": "Stafford LPA", "reference": "E60000122"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613542", "data": {"entity": 626123, "name": "Staffordshire Moorlands LPA", "reference": "E60000123"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613567", "data": {"entity": 626124, "name": "Tamworth LPA", "reference": "E60000124"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613591", "data": {"entity": 626125, "name": "North Warwickshire LPA", "reference": "E60000125"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613616", "data": {"entity": 626126, "name": "Nuneaton and Bedworth LPA", "reference": "E60000126"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613643", "data": {"entity": 626127, "name": "Rugby LPA", "reference": "E60000127"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613668", "data": {"entity": 626128, "name": "Stratford-on-Avon LPA", "reference": "E60000128"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613694", "data": {"entity": 626129, "name": "Warwick LPA", "reference": "E60000129"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613722", "data": {"entity": 626130, "name": "Birmingham LPA", "reference": "E60000130"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613748", "data": {"entity": 626131, "name": "Coventry LPA", "reference": "E60000131"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613773", "data": {"entity": 626132, "name": "Dudley LPA", "reference": "E60000132"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613798", "data": {"entity": 626133, "name": "Sandwell LPA", "reference": "E60000133"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613822", "data": {"entity": 626134, "name": "Solihull LPA", "reference": "E60000134"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613847", "data": {"entity": 626135, "name": "Walsall LPA", "reference": "E60000135"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613870", "data": {"entity": 626136, "name": "Wolverhampton LPA", "reference": "E60000136"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613894", "data": {"entity": 626137, "name": "Bromsgrove LPA", "reference": "E60000137"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613917", "data": {"entity": 626138, "name": "Malvern Hills LPA", "reference": "E60000138"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613943", "data": {"entity": 626139, "name": "Redditch LPA", "reference": "E60000139"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613968", "data": {"entity": 626140, "name": "Worcester LPA", "reference": "E60000140"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.613993", "data": {"entity": 626141, "name": "Wychavon LPA", "reference": "E60000141"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614018", "data": {"entity": 626142, "name": "Wyre Forest LPA", "reference": "E60000142"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614044", "data": {"entity": 626143, "name": "Bedford LPA", "reference": "E60000143"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614071", "data": {"entity": 626144, "name": "Central Bedfordshire LPA", "reference": "E60000144"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614097", "data": {"entity": 626145, "name": "Luton LPA", "reference": "E60000145"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614124", "data": {"entity": 626146, "name": "Peterborough LPA", "reference": "E60000146"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614149", "data": {"entity": 626147, "name": "Southend-on-Sea LPA", "reference": "E60000147"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614173", "data": {"entity": 626148, "name": "Thurrock LPA", "reference": "E60000148"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614198", "data": {"entity": 626149, "name": "Cambridge LPA", "reference": "E60000149"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614225", "data": {"entity": 626150, "name": "East Cambridgeshire LPA", "reference": "E60000150"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614251", "data": {"entity": 626151, "name": "Fenland LPA", "reference": "E60000151"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614275", "data": {"entity": 626152, "name": "Huntingdonshire LPA", "reference": "E60000152"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614302", "data": {"entity": 626153, "name": "South Cambridgeshire LPA", "reference": "E60000153"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614329", "data": {"entity": 626154, "name": "Basildon LPA", "reference": "E60000154"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614356", "data": {"entity": 626155, "name": "Braintree LPA", "reference": "E60000155"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614384", "data": {"entity": 626156, "name": "Brentwood LPA", "reference": "E60000156"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614412", "data": {"entity": 626157, "name": "Castle Point LPA", "reference": "E60000157"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614440", "data": {"entity": 626158, "name": "Chelmsford LPA", "reference": "E60000158"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614467", "data": {"entity": 626159, "name": "Colchester LPA", "reference": "E60000159"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614567", "data": {"entity": 626160, "name": "Epping Forest LPA", "reference": "E60000160"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614594", "data": {"entity": 626161, "name": "Harlow LPA", "reference": "E60000161"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614621", "data": {"entity": 626162, "name": "Maldon LPA", "reference": "E60000162"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614648", "data": {"entity": 626163, "name": "Rochford LPA", "reference": "E60000163"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614674", "data": {"entity": 626164, "name": "Tendring LPA", "reference": "E60000164"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614703", "data": {"entity": 626165, "name": "Uttlesford LPA", "reference": "E60000165"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614731", "data": {"entity": 626166, "name": "Broxbourne LPA", "reference": "E60000166"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614852", "data": {"entity": 626167, "name": "Dacorum LPA", "reference": "E60000167"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614886", "data": {"entity": 626168, "name": "East Hertfordshire LPA", "reference": "E60000168"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614912", "data": {"entity": 626169, "name": "Hertsmere LPA", "reference": "E60000169"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614938", "data": {"entity": 626170, "name": "North Hertfordshire LPA", "reference": "E60000170"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614964", "data": {"entity": 626171, "name": "St Albans LPA", "reference": "E60000171"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.614990", "data": {"entity": 626172, "name": "Stevenage LPA", "reference": "E60000172"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615016", "data": {"entity": 626173, "name": "Three Rivers LPA", "reference": "E60000173"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615042", "data": {"entity": 626174, "name": "Watford LPA", "reference": "E60000174"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615066", "data": {"entity": 626175, "name": "Welwyn Hatfield LPA", "reference": "E60000175"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615089", "data": {"entity": 626176, "name": "Breckland LPA", "reference": "E60000176"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615114", "data": {"entity": 626177, "name": "Broadland LPA", "reference": "E60000177"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615139", "data": {"entity": 626178, "name": "Great Yarmouth LPA", "reference": "E60000178"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615164", "data": {"entity": 626179, "name": "King\u2019s Lynn and West Norfolk LPA", "reference": "E60000179"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615191", "data": {"entity": 626180, "name": "North Norfolk LPA", "reference": "E60000180"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615217", "data": {"entity": 626181, "name": "Norwich LPA", "reference": "E60000181"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615244", "data": {"entity": 626182, "name": "South Norfolk LPA", "reference": "E60000182"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615270", "data": {"entity": 626183, "name": "Babergh LPA", "reference": "E60000183"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615298", "data": {"entity": 626184, "name": "East Suffolk LPA", "reference": "E60000184"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615325", "data": {"entity": 626185, "name": "Ipswich LPA", "reference": "E60000185"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615353", "data": {"entity": 626186, "name": "Mid Suffolk LPA", "reference": "E60000186"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615380", "data": {"entity": 626187, "name": "West Suffolk LPA", "reference": "E60000187"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615409", "data": {"entity": 626188, "name": "Camden LPA", "reference": "E60000188"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615435", "data": {"entity": 626189, "name": "City of London LPA", "reference": "E60000189"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615463", "data": {"entity": 626190, "name": "Hackney LPA", "reference": "E60000190"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615489", "data": {"entity": 626191, "name": "Hammersmith and Fulham LPA", "reference": "E60000191"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615518", "data": {"entity": 626192, "name": "Haringey LPA", "reference": "E60000192"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615542", "data": {"entity": 626193, "name": "Islington LPA", "reference": "E60000193"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615567", "data": {"entity": 626194, "name": "Kensington and Chelsea LPA", "reference": "E60000194"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615591", "data": {"entity": 626195, "name": "Lambeth LPA", "reference": "E60000195"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615615", "data": {"entity": 626196, "name": "Lewisham LPA", "reference": "E60000196"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615640", "data": {"entity": 626197, "name": "Newham LPA", "reference": "E60000197"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615664", "data": {"entity": 626198, "name": "Southwark LPA", "reference": "E60000198"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615689", "data": {"entity": 626199, "name": "Tower Hamlets LPA", "reference": "E60000199"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615713", "data": {"entity": 626200, "name": "Wandsworth LPA", "reference": "E60000200"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615737", "data": {"entity": 626201, "name": "Westminster LPA", "reference": "E60000201"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615762", "data": {"entity": 626202, "name": "Barking and Dagenham LPA", "reference": "E60000202"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615787", "data": {"entity": 626203, "name": "Barnet LPA", "reference": "E60000203"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615812", "data": {"entity": 626204, "name": "Bexley LPA", "reference": "E60000204"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615837", "data": {"entity": 626205, "name": "Brent LPA", "reference": "E60000205"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615862", "data": {"entity": 626206, "name": "Bromley LPA", "reference": "E60000206"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615888", "data": {"entity": 626207, "name": "Croydon LPA", "reference": "E60000207"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615913", "data": {"entity": 626208, "name": "Ealing LPA", "reference": "E60000208"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615938", "data": {"entity": 626209, "name": "Enfield LPA", "reference": "E60000209"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615964", "data": {"entity": 626210, "name": "Greenwich LPA", "reference": "E60000210"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.615988", "data": {"entity": 626211, "name": "Harrow LPA", "reference": "E60000211"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616011", "data": {"entity": 626212, "name": "Havering LPA", "reference": "E60000212"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616036", "data": {"entity": 626213, "name": "Hillingdon LPA", "reference": "E60000213"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616063", "data": {"entity": 626214, "name": "Hounslow LPA", "reference": "E60000214"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616089", "data": {"entity": 626215, "name": "Kingston upon Thames LPA", "reference": "E60000215"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616117", "data": {"entity": 626216, "name": "Merton LPA", "reference": "E60000216"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616145", "data": {"entity": 626217, "name": "Redbridge LPA", "reference": "E60000217"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616172", "data": {"entity": 626218, "name": "Richmond upon Thames LPA", "reference": "E60000218"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616198", "data": {"entity": 626219, "name": "Sutton LPA", "reference": "E60000219"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616221", "data": {"entity": 626220, "name": "Waltham Forest LPA", "reference": "E60000220"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616245", "data": {"entity": 626221, "name": "Bracknell Forest LPA", "reference": "E60000221"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616269", "data": {"entity": 626222, "name": "Brighton and Hove LPA", "reference": "E60000222"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616398", "data": {"entity": 626223, "name": "Isle of Wight LPA", "reference": "E60000223"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616432", "data": {"entity": 626224, "name": "Medway LPA", "reference": "E60000224"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616461", "data": {"entity": 626225, "name": "Milton Keynes LPA", "reference": "E60000225"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616489", "data": {"entity": 626226, "name": "Portsmouth LPA", "reference": "E60000226"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616516", "data": {"entity": 626227, "name": "Reading LPA", "reference": "E60000227"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616539", "data": {"entity": 626228, "name": "Slough LPA", "reference": "E60000228"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616559", "data": {"entity": 626229, "name": "Southampton LPA", "reference": "E60000229"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616584", "data": {"entity": 626230, "name": "West Berkshire LPA", "reference": "E60000230"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616607", "data": {"entity": 626231, "name": "Windsor and Maidenhead LPA", "reference": "E60000231"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616631", "data": {"entity": 626232, "name": "Wokingham LPA", "reference": "E60000232"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616657", "data": {"entity": 626233, "name": "Aylesbury Vale LPA", "reference": "E60000233"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616682", "data": {"entity": 626234, "name": "Chiltern LPA", "reference": "E60000234"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616707", "data": {"entity": 626235, "name": "South Bucks LPA", "reference": "E60000235"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616734", "data": {"entity": 626236, "name": "Wycombe LPA", "reference": "E60000236"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616761", "data": {"entity": 626237, "name": "Eastbourne LPA", "reference": "E60000237"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616787", "data": {"entity": 626238, "name": "Hastings LPA", "reference": "E60000238"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616813", "data": {"entity": 626239, "name": "Lewes LPA", "reference": "E60000239"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616841", "data": {"entity": 626240, "name": "Rother LPA", "reference": "E60000240"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616869", "data": {"entity": 626241, "name": "Wealden LPA", "reference": "E60000241"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616897", "data": {"entity": 626242, "name": "Basingstoke and Deane LPA", "reference": "E60000242"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616924", "data": {"entity": 626243, "name": "East Hampshire LPA", "reference": "E60000243"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616951", "data": {"entity": 626244, "name": "Eastleigh LPA", "reference": "E60000244"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.616979", "data": {"entity": 626245, "name": "Fareham LPA", "reference": "E60000245"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617005", "data": {"entity": 626246, "name": "Gosport LPA", "reference": "E60000246"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617030", "data": {"entity": 626247, "name": "Hart LPA", "reference": "E60000247"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617057", "data": {"entity": 626248, "name": "Havant LPA", "reference": "E60000248"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617085", "data": {"entity": 626249, "name": "New Forest LPA", "reference": "E60000249"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617109", "data": {"entity": 626250, "name": "Rushmoor LPA", "reference": "E60000250"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617135", "data": {"entity": 626251, "name": "Test Valley LPA", "reference": "E60000251"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617160", "data": {"entity": 626252, "name": "Winchester LPA", "reference": "E60000252"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617186", "data": {"entity": 626253, "name": "Ashford LPA", "reference": "E60000253"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617212", "data": {"entity": 626254, "name": "Canterbury LPA", "reference": "E60000254"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617238", "data": {"entity": 626255, "name": "Dartford LPA", "reference": "E60000255"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617263", "data": {"entity": 626256, "name": "Dover LPA", "reference": "E60000256"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617289", "data": {"entity": 626257, "name": "Folkestone and Hythe LPA", "reference": "E60000257"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617315", "data": {"entity": 626258, "name": "Gravesham LPA", "reference": "E60000258"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617340", "data": {"entity": 626259, "name": "Maidstone LPA", "reference": "E60000259"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617368", "data": {"entity": 626260, "name": "Sevenoaks LPA", "reference": "E60000260"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617395", "data": {"entity": 626261, "name": "Swale LPA", "reference": "E60000261"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617423", "data": {"entity": 626262, "name": "Thanet LPA", "reference": "E60000262"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617448", "data": {"entity": 626263, "name": "Tonbridge and Malling LPA", "reference": "E60000263"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617472", "data": {"entity": 626264, "name": "Tunbridge Wells LPA", "reference": "E60000264"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617497", "data": {"entity": 626265, "name": "Cherwell LPA", "reference": "E60000265"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617523", "data": {"entity": 626266, "name": "Oxford LPA", "reference": "E60000266"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617551", "data": {"entity": 626267, "name": "South Oxfordshire LPA", "reference": "E60000267"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617578", "data": {"entity": 626268, "name": "Vale of White Horse LPA", "reference": "E60000268"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617606", "data": {"entity": 626269, "name": "West Oxfordshire LPA", "reference": "E60000269"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617634", "data": {"entity": 626270, "name": "Elmbridge LPA", "reference": "E60000270"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617663", "data": {"entity": 626271, "name": "Epsom and Ewell LPA", "reference": "E60000271"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617690", "data": {"entity": 626272, "name": "Guildford LPA", "reference": "E60000272"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617717", "data": {"entity": 626273, "name": "Mole Valley LPA", "reference": "E60000273"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617742", "data": {"entity": 626274, "name": "Reigate and Banstead LPA", "reference": "E60000274"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617767", "data": {"entity": 626275, "name": "Runnymede LPA", "reference": "E60000275"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617794", "data": {"entity": 626276, "name": "Spelthorne LPA", "reference": "E60000276"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617819", "data": {"entity": 626277, "name": "Surrey Heath LPA", "reference": "E60000277"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617845", "data": {"entity": 626278, "name": "Tandridge LPA", "reference": "E60000278"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617927", "data": {"entity": 626279, "name": "Waverley LPA", "reference": "E60000279"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617961", "data": {"entity": 626280, "name": "Woking LPA", "reference": "E60000280"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.617989", "data": {"entity": 626281, "name": "Adur LPA", "reference": "E60000281"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618016", "data": {"entity": 626282, "name": "Arun LPA", "reference": "E60000282"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618043", "data": {"entity": 626283, "name": "Chichester LPA", "reference": "E60000283"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618069", "data": {"entity": 626284, "name": "Crawley LPA", "reference": "E60000284"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618093", "data": {"entity": 626285, "name": "Horsham LPA", "reference": "E60000285"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618120", "data": {"entity": 626286, "name": "Mid Sussex LPA", "reference": "E60000286"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618144", "data": {"entity": 626287, "name": "Worthing LPA", "reference": "E60000287"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618169", "data": {"entity": 626288, "name": "Bath and North East Somerset LPA", "reference": "E60000288"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618193", "data": {"entity": 626289, "name": "Bournemouth, Christchurch and Poole LPA", "reference": "E60000289"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618217", "data": {"entity": 626290, "name": "Bristol, City of LPA", "reference": "E60000290"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618241", "data": {"entity": 626291, "name": "Cornwall LPA", "reference": "E60000291"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618265", "data": {"entity": 626292, "name": "Dorset LPA", "reference": "E60000292"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618289", "data": {"entity": 626293, "name": "Isles of Scilly LPA", "reference": "E60000293"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618312", "data": {"entity": 626294, "name": "North Somerset LPA", "reference": "E60000294"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618335", "data": {"entity": 626295, "name": "Plymouth LPA", "reference": "E60000295"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618360", "data": {"entity": 626296, "name": "South Gloucestershire LPA", "reference": "E60000296"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618382", "data": {"entity": 626297, "name": "Swindon LPA", "reference": "E60000297"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618405", "data": {"entity": 626298, "name": "Torbay LPA", "reference": "E60000298"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618431", "data": {"entity": 626299, "name": "Wiltshire LPA", "reference": "E60000299"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618457", "data": {"entity": 626300, "name": "East Devon LPA", "reference": "E60000300"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618521", "data": {"entity": 626301, "name": "Exeter LPA", "reference": "E60000301"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618551", "data": {"entity": 626302, "name": "Mid Devon LPA", "reference": "E60000302"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618575", "data": {"entity": 626303, "name": "North Devon LPA", "reference": "E60000303"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618600", "data": {"entity": 626304, "name": "South Hams LPA", "reference": "E60000304"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618625", "data": {"entity": 626305, "name": "Teignbridge LPA", "reference": "E60000305"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618651", "data": {"entity": 626306, "name": "Torridge LPA", "reference": "E60000306"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618678", "data": {"entity": 626307, "name": "West Devon LPA", "reference": "E60000307"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618704", "data": {"entity": 626308, "name": "Cheltenham LPA", "reference": "E60000308"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618727", "data": {"entity": 626309, "name": "Cotswold LPA", "reference": "E60000309"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618752", "data": {"entity": 626310, "name": "Forest of Dean LPA", "reference": "E60000310"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618776", "data": {"entity": 626311, "name": "Gloucester LPA", "reference": "E60000311"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618803", "data": {"entity": 626312, "name": "Stroud LPA", "reference": "E60000312"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618829", "data": {"entity": 626313, "name": "Tewkesbury LPA", "reference": "E60000313"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618856", "data": {"entity": 626314, "name": "Mendip LPA", "reference": "E60000314"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618884", "data": {"entity": 626315, "name": "Sedgemoor LPA", "reference": "E60000315"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618911", "data": {"entity": 626316, "name": "Somerset West and Taunton LPA", "reference": "E60000316"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618936", "data": {"entity": 626317, "name": "South Somerset LPA", "reference": "E60000317"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618962", "data": {"entity": 626318, "name": "Dartmoor National Park LPA", "reference": "E60000318"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.618986", "data": {"entity": 626319, "name": "Exmoor National Park LPA", "reference": "E60000319"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619011", "data": {"entity": 626320, "name": "Lake District National Park LPA", "reference": "E60000320"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619035", "data": {"entity": 626321, "name": "New Forest National Park LPA", "reference": "E60000321"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619061", "data": {"entity": 626322, "name": "North York Moors National Park LPA", "reference": "E60000322"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619088", "data": {"entity": 626323, "name": "Northumberland National Park LPA", "reference": "E60000323"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619116", "data": {"entity": 626324, "name": "Peak District National Park LPA", "reference": "E60000324"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619142", "data": {"entity": 626325, "name": "South Downs National Park LPA", "reference": "E60000325"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619168", "data": {"entity": 626326, "name": "The Broads Authority LPA", "reference": "E60000326"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619194", "data": {"entity": 626327, "name": "Yorkshire Dales National Park LPA", "reference": "E60000327"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619221", "data": {"entity": 626328, "name": "Ebbsfleet Development Corporation LPA", "reference": "E60000328"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619246", "data": {"entity": 626329, "name": "London Legacy Development Corporation LPA", "reference": "E60000329"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619271", "data": {"entity": 626330, "name": "Old Oak and Park Royal Development Corporation LPA", "reference": "E60000330"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619298", "data": {"entity": 626331, "name": "Buckinghamshire LPA", "reference": "E60000331"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619323", "data": {"entity": 626332, "name": "North Northamptonshire LPA", "reference": "E60000332"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619410", "data": {"entity": 626333, "name": "West Northamptonshire LPA", "reference": "E60000333"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619442", "data": {"entity": 626334, "name": "Cumberland LPA", "reference": "E60000334"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619470", "data": {"entity": 626335, "name": "Westmorland and Furness LPA", "reference": "E60000335"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619497", "data": {"entity": 626336, "name": "North Yorkshire LPA", "reference": "E60000336"}}
+{"data_type": "lpas", "collected_at": "2026-09-19T16:46:46.619525", "data": {"entity": 626337, "name": "Somerset LPA", "reference": "E60000337"}}

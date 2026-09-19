@@ -38,7 +38,7 @@ def collect_recent_contracts(days: int = 30, limit: int = 100) -> list:
         
         if resp.status_code == 200:
             data = resp.json()
-            records = data.get('records', data.get('searchResults', []))
+            records = data.get('noticeList', data.get('records', []))
             if isinstance(records, list):
                 for record in records[:limit]:
                     results.append(normalize_contract(record))
@@ -71,7 +71,7 @@ def collect_contracts_by_area(area: str, limit: int = 50) -> list:
         
         if resp.status_code == 200:
             data = resp.json()
-            records = data.get('records', data.get('searchResults', []))
+            records = data.get('noticeList', data.get('records', []))
             if isinstance(records, list):
                 for record in records[:limit]:
                     results.append(normalize_contract(record))
@@ -82,17 +82,19 @@ def collect_contracts_by_area(area: str, limit: int = 50) -> list:
 
 def normalize_contract(raw: dict) -> dict:
     """Normalize contract to canonical form."""
+    item = raw.get('item', raw)
     return {
-        'contract_id': raw.get('id', '') or raw.get('noticeIdentifier', ''),
-        'title': raw.get('title', ''),
-        'description': raw.get('description', '')[:500],
-        'buyer': raw.get('organisationName', ''),
-        'buyer_location': raw.get('postcode', ''),
-        'cpv_codes': raw.get('cpvCodes', []),
-        'value_gbp': raw.get('awardedValue', 0) or raw.get('valueHigh', 0) or 0,
-        'status': raw.get('noticeStatus', ''),
-        'award_date': raw.get('awardedDate', '') or raw.get('publishedDate', ''),
-        'supplier': raw.get('awardedSupplier', ''),
+        'contract_id': item.get('id', '') or item.get('noticeIdentifier', ''),
+        'title': item.get('title', ''),
+        'description': (item.get('description', '') or '')[:500],
+        'buyer': item.get('organisationName', ''),
+        'buyer_location': item.get('postcode', ''),
+        'cpv_codes': item.get('cpvCodes', []),
+        'cpv_description': item.get('cpvDescription', ''),
+        'value_gbp': item.get('awardedValue', 0) or 0,
+        'status': item.get('noticeStatus', ''),
+        'award_date': item.get('awardedDate', '') or item.get('publishedDate', ''),
+        'supplier': item.get('awardedSupplier', ''),
         'source': 'contracts_finder',
         'observed_at': datetime.now().isoformat(),
     }

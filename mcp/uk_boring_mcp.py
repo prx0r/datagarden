@@ -185,6 +185,23 @@ TOOLS = [
             "required": ["place_id"]
         }
     },
+    {
+        "name": "earn",
+        "description": "Find economic opportunities based on what a person can do. Returns grounded actions with estimated value, confidence, and route to action.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "Where the person is (e.g. 'Oldham')"},
+                "skills": {"type": "array", "items": {"type": "string"}, "description": "Skills (e.g. ['electrician', 'van'])"},
+                "certifications": {"type": "array", "items": {"type": "string"}, "description": "Certifications (e.g. ['NICEIC'])"},
+                "available_days": {"type": "array", "items": {"type": "string"}, "description": "Days available"},
+                "capital": {"type": "number", "description": "Available capital in GBP"},
+                "target_amount": {"type": "number", "description": "How much to make"},
+                "deadline": {"type": "string", "description": "When needed by"}
+            },
+            "required": ["location", "skills"]
+        }
+    },
 ]
 
 
@@ -371,6 +388,49 @@ def list_national_workflows(category: str = None) -> dict:
     }
 
 
+def earn(location: str, skills: list, certifications: list = None,
+         available_days: list = None, capital: float = 0,
+         target_amount: float = 0, deadline: str = "") -> dict:
+    """Find economic opportunities based on what a person can do."""
+    from uk_boring.earn import find_earn_opportunities, CapabilityEnvelope
+    
+    profile = CapabilityEnvelope(
+        location=location,
+        skills=skills,
+        certifications=certifications or [],
+        equipment=[],
+        available_hours=8,
+        available_days=available_days or [],
+        capital=capital,
+        vehicle='',
+        radius_miles=20,
+    )
+    
+    opps = find_earn_opportunities(profile)
+    
+    results = []
+    for o in opps[:10]:
+        results.append({
+            'action': o.action,
+            'title': o.title,
+            'description': o.description[:200],
+            'estimated_value_gbp': o.estimated_value_gbp,
+            'confidence': round(o.confidence, 2),
+            'distance_miles': o.distance_miles,
+            'deadline': o.deadline,
+            'route_to_action': o.route_to_action,
+            'source': o.source,
+        })
+    
+    return {
+        "status": "ok",
+        "location": location,
+        "skills": skills,
+        "opportunities": results,
+        "count": len(results),
+    }
+
+
 def achieve_goal(goal_id: str, context: dict = None) -> dict:
     from uk_boring.goals import get_goal
     context = context or {}
@@ -478,6 +538,7 @@ DISPATCH = {
     "preflight": preflight,
     "verify_receipt": verify_receipt,
     "list_national_workflows": list_national_workflows,
+    "earn": earn,
     "achieve_goal": achieve_goal,
     "list_goals": list_goals,
     "get_opportunities": get_opportunities,

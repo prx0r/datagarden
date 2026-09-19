@@ -34,7 +34,7 @@ def collect_recent_applications(days: int = 30, limit: int = 100) -> list:
         )
         if resp.status_code == 200:
             data = resp.json()
-            items = data if isinstance(data, list) else data.get('items', data.get('data', []))
+            items = data.get('entities', data.get('items', data if isinstance(data, list) else []))
             if isinstance(items, list):
                 for item in items[:limit]:
                     results.append(normalize_application(item))
@@ -88,7 +88,7 @@ def collect_lpas() -> list:
         )
         if resp.status_code == 200:
             data = resp.json()
-            items = data if isinstance(data, list) else data.get('items', data.get('data', []))
+            items = data.get('entities', data.get('items', data if isinstance(data, list) else []))
             if isinstance(items, list):
                 for item in items:
                     results.append({

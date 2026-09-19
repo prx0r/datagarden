@@ -16,7 +16,7 @@ import json
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path('/home/box/powpowpow')))
+sys.path.insert(0, str(Path(os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow'))))
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
@@ -55,7 +55,7 @@ def evaluate_hardware(hardware_key: str = 'RTX_4060', electricity_rate: float = 
         return {"error": f"Unknown hardware: {hardware_key}", "available": list(COMMON_HARDWARE.keys())}
     
     # Load all chain data
-    chains_dir = Path('/home/box/powpowpow/chains')
+    chains_dir = Path(os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')) / 'chains'
     results = []
     
     for chain_dir in sorted(chains_dir.iterdir()):
@@ -146,7 +146,7 @@ def find_compute_opportunity(electricity_rate: float = 0.15, risk: str = 'medium
     except ImportError:
         return {"error": "Cannot import powpowpow modules"}
     
-    chains_dir = Path('/home/box/powpowpow/chains')
+    chains_dir = Path(os.environ.get('POWPOWPOW_DIR', '/home/box/powpowpow')) / 'chains'
     best_by_hardware = {}
     
     for hw_key, hw_info in COMMON_HARDWARE.items():
