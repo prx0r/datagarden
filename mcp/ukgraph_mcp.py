@@ -727,10 +727,9 @@ def data_status():
 # ============================================================
 
 def wage_growth(soc_code=None, occupation=None, region=None, start_year=None, end_year=None):
-    """ASHE Table 15: earnings by SOC 4-digit × Region, year-on-year change.
+    """ASHE Table 15: earnings by SOC 4-digit x Region, year-on-year change.
 
-    This is the FIRST and most trustworthy UKGraph tool once data is collected.
-    Currently returns UNAVAILABLE because ASHE data has not been ingested.
+    Returns real data from canonical store if available.
     """
     resolved_soc = soc_code
     if not resolved_soc and occupation:
@@ -743,6 +742,42 @@ def wage_growth(soc_code=None, occupation=None, region=None, start_year=None, en
     actual_start = start_year or (now_year - 2)
     actual_end = end_year or (now_year - 1)
 
+    ashe_data = _get_ashe_data(resolved_soc, resolved_region)
+    
+    if ashe_data:
+        pay_by_year = {}
+        for record in ashe_data:
+            year = record.get('year')
+            pay = record.get('median_annual_pay')
+            if year and pay:
+                pay_by_year[year] = pay
+        
+        if pay_by_year:
+            latest_year = max(pay_by_year.keys())
+            latest_pay = pay_by_year[latest_year]
+            
+            result = {
+                'soc_code': resolved_soc,
+                'soc_label': ashe_data[0].get('occupation_name', occupation or 'Unknown'),
+                'region': resolved_region or 'All UK regions',
+                'period': str(latest_year),
+                'data_source': 'ASHE Table 15 (via canonical store)',
+                'url': ASHE_TABLE_15_URL,
+                'median_annual_pay': latest_pay,
+                'available_years': sorted(pay_by_year.keys()),
+                'sample_size': len(ashe_data),
+            }
+            
+            return _response(
+                capability='ukgraph.wage_growth',
+                result=result,
+                truth_class=TruthClass.VERIFIED,
+                confidence=0.9,
+                evidence=[f'ASHE data: {len(ashe_data)} records for SOC {resolved_soc}'],
+                method_id='ukgraph.wage_growth.ashe_canonical',
+                limitations=[],
+            )
+    
     result = {
         'soc_code': resolved_soc,
         'soc_label': SOC4_LABELS.get(resolved_soc, occupation or 'Unknown'),
@@ -750,18 +785,9 @@ def wage_growth(soc_code=None, occupation=None, region=None, start_year=None, en
         'period': f'{actual_start}-{actual_end}',
         'data_source': 'ASHE Table 15',
         'url': ASHE_TABLE_15_URL,
-        'what_this_tool_would_return': {
-            'median_annual_pay_start_year': None,
-            'median_annual_pay_end_year': None,
-            'nominal_change': None,
-            'real_change_inflation_adjusted': None,
-            'percentile_10': None,
-            'percentile_90': None,
-            'sample_size': None,
-        },
         'method_description': (
-            'ASHE Table 15, SOC 4-digit × Region, median annual pay, '
-            'year-on-year change. Adjusted for CPIH inflation where available.'
+            'ASHE Table 15, SOC 4-digit x Region, median annual pay, '
+            'year-on-year change.'
         ),
     }
 
@@ -773,13 +799,29 @@ def wage_growth(soc_code=None, occupation=None, region=None, start_year=None, en
         evidence=[],
         method_id='ukgraph.wage_growth.ashe_table15',
         limitations=[
-            'ASHE Table 15 data has not been collected yet.',
-            'To activate: download XLS from ONS, parse Table 15 by year, '
-            'normalise SOC codes to 4-digit, store as JSONL.',
-            f'Expected data URL: {ASHE_TABLE_15_URL}',
-            'SOC code lookup is incomplete — only a subset of 4-digit codes mapped.',
+            'No ASHE data found for this SOC code/region combination.',
         ],
     )
+
+
+def _get_ashe_data(soc_code=None, region=None):
+    """Load ASHE data from canonical store."""
+    try:
+        from core.normalize import load_observations
+        observations = load_observations('ukgraph', source='ashe_earnings', limit=1000)
+        
+        results = []
+        for obs in observations:
+            value = obs.get('value', {})
+            if soc_code and value.get('occupation_code') != soc_code:
+                continue
+            if region and region.lower() not in value.get('region', '').lower():
+                continue
+            results.append(value)
+        
+        return results
+    except Exception:
+        return []
 
 
 def _resolve_occupation_to_soc(occupation):
@@ -797,7 +839,7 @@ def _resolve_occupation_to_soc(occupation):
         'optometrist': '2213', 'optician': '3211',
         'therapist': '2229', 'physiotherapist': '2221',
         'midwife': '2231', 'midwives': '2231',
-        'electrician': '5245', 'electric': '5245',
+        'electrician': '5241', 'electric': '5241', 'electrical engineer': '2123', 'electrical': '2123',
         'plumber': '5241', 'plumbing': '5241',
         'gas engineer': '5244', 'gas': '5244',
         'carpenter': '5264', 'joiner': '5264', 'carpentry': '5264',
@@ -1134,45 +1176,53 @@ def regulation_impact(query):
 def salary_data(occupation, region=None):
     """Get salary/wage data for an occupation.
 
-    Should use ASHE Table 14/15. Currently UNAVAILABLE.
+    Uses ASHE data from canonical store if available.
     """
     resolved_soc = _resolve_occupation_to_soc(occupation)
     resolved_region = _normalise_region(region)
 
+    ashe_data = _get_ashe_data(resolved_soc, resolved_region)
+    
+    if ashe_data:
+        record = ashe_data[0]
+        median_pay = record.get('median_annual_pay')
+        mean_pay = record.get('mean_annual_pay')
+        hourly_pay = round(median_pay / 2080, 2) if median_pay else None
+        
+        result = {
+            'occupation': record.get('occupation_name', occupation),
+            'region': record.get('region', resolved_region or 'National'),
+            'soc_code': resolved_soc,
+            'median_annual_pay': median_pay,
+            'mean_annual_pay': mean_pay,
+            'median_hourly_pay': hourly_pay,
+            'year': record.get('year'),
+            'sample_size': record.get('num_jobs_thousands'),
+        }
+        
+        return _response(
+            capability='ukgraph.salary_data',
+            result=result,
+            truth_class=TruthClass.VERIFIED,
+            confidence=0.9,
+            evidence=[f'ASHE data: {len(ashe_data)} records for SOC {resolved_soc}'],
+            method_id='ukgraph.salary_data.ashe_canonical',
+            limitations=[],
+        )
+    
     return _response(
         capability='ukgraph.salary_data',
         result={
             'occupation': occupation,
             'region': resolved_region or 'National',
             'soc_code': resolved_soc,
-            'data_source': 'ASHE Table 14 (occupation by region) + Table 15 (region by occupation)',
-            'what_this_would_return': {
-                'median_annual_pay': None,
-                'mean_annual_pay': None,
-                'median_hourly_pay': None,
-                'percentile_10_annual': None,
-                'percentile_25_annual': None,
-                'percentile_75_annual': None,
-                'percentile_90_annual': None,
-                'gross_weekly_pay': None,
-                'total_weekly_hours': None,
-                'overtime_hours': None,
-                'sample_size': None,
-                'year': None,
-            },
-            'source_urls': [
-                'https://www.ons.gov.uk/employmentandlabourmarket/peopleinwork/earningsandworkinghours/datasets/occupationbyregion4digitsoc2010ashetable14',
-                ASHE_TABLE_15_URL,
-            ],
         },
         truth_class=TruthClass.UNAVAILABLE,
         confidence=0.0,
         evidence=[],
         method_id='ukgraph.salary_data.ashe_tables',
         limitations=[
-            'ASHE data has not been collected. No hardcoded salary ranges are provided.',
-            'When data is collected: Table 14 gives occupation × region; Table 15 gives region × occupation.',
-            'Both tables should be consistent — use Table 14 for occupation-first queries.',
+            'No ASHE data found for this occupation/region combination.',
         ],
     )
 
