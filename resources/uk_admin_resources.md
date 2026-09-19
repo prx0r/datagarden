@@ -58,14 +58,16 @@
 | UK House Prices | [ukhouseprices.uk](https://ukhouseprices.uk/) | 31M+ records, free access |
 | EPC Open Data | MHCLG | 25M+ energy certificates (free API key) |
 
-## MCP Servers
+## MCP Servers (cloned + ready)
 
-| MCP Server | URL | Tools |
-|------------|-----|-------|
-| paulieb89/govuk-mcp | [GitHub](https://github.com/paulieb89/govuk-mcp) | 7: search, content, grep, orgs, postcode |
-| Stealth-Labs-LTD/GovUK-MCP | [GitHub](https://github.com/Stealth-Labs-LTD/GovUK-MCP) | 33: Companies House, TfL, NHS, Parliament, Police |
-| HappyMonkeyAI/OpenUKPublicDataMCP | [GitHub](https://github.com/HappyMonkeyAI/OpenUKPublicDataMCP) | Postcodes, GOV.UK, bank holidays, carbon, flood |
-| matematicsolutions/gb-eli-mcp | [GitHub](https://github.com/matematicsolutions/gb-eli-mcp) | legislation.gov.uk + Find Case Law |
+| MCP Server | Location | Tools |
+|------------|----------|-------|
+| legislation-mcp-ts | `/home/box/legislation-mcp-ts/` | 7+: search UK statutes, get legislation, effects, powers |
+| GovUK-MCP | `/home/box/GovUK-MCP/` | 33: Companies House, TfL, NHS, Parliament, Police |
+| govuk-mcp | `/home/box/govuk-mcp/` | 7: GOV.UK search, content, organisations, postcodes |
+| legislation-mcp-ts | GitHub | legislation.gov.uk MCP |
+| Stealth-Labs-LTD/GovUK-MCP | GitHub | 33 gov APIs |
+| HappyMonkeyAI/OpenUKPublicDataMCP | GitHub | Postcodes, GOV.UK, carbon, flood |
 
 ## Government Open Data
 
