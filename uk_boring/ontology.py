@@ -1,8 +1,9 @@
-"""The 12 core ontology objects.
+"""The 14 core ontology objects.
 
 Everything in UK Boring decomposes into these:
   Place, Service, Rule, Workflow, Form, Requirement,
-  Evidence, Action, Outcome, Provider, Offer, Signal
+  Evidence, Action, Outcome, Provider, Offer, Signal,
+  Goal, Opportunity
 """
 
 from dataclasses import dataclass, field
@@ -118,3 +119,30 @@ class Signal:
     strength: float = 0        # 0-1
     detected_at: str = ""
     source: str = ""
+
+@dataclass
+class Goal:
+    """What a person actually wants to accomplish."""
+    goal_id: str
+    name: str
+    description: str
+    category: str              # personal, business, property, legal
+    place_required: bool       # does this need a resolved place?
+    workflows: list            # workflow_ids needed
+    expected_outcomes: list    # what success looks like
+    typical_duration: str      # how long this usually takes
+    recurring: bool            # does this happen repeatedly?
+
+@dataclass
+class Opportunity:
+    """A detected opportunity for a person or business."""
+    opportunity_id: str
+    place_id: str
+    type: str                  # job, contract, grant, business_gap, demand_signal
+    title: str
+    description: str
+    value_gbp: float = 0
+    deadline: str = ""
+    source: str = ""
+    detected_at: str = ""
+    evidence: list = field(default_factory=list)

@@ -150,6 +150,41 @@ TOOLS = [
             }
         }
     },
+    {
+        "name": "achieve_goal",
+        "description": "Start working toward a goal. Returns the workflow chain needed.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "goal_id": {"type": "string", "description": "Goal to achieve (e.g. 'move_home', 'find_local_work', 'sell_item')"},
+                "context": {"type": "object", "description": "Information we already have"}
+            },
+            "required": ["goal_id"]
+        }
+    },
+    {
+        "name": "list_goals",
+        "description": "List all available goals for a place or category.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "outlet": {"type": "string", "description": "Filter: ukboring, ukopportunity, ukproducts"},
+                "place_id": {"type": "string", "description": "Filter by place"}
+            }
+        }
+    },
+    {
+        "name": "get_opportunities",
+        "description": "What opportunities exist in this area? (jobs, contracts, grants, business gaps)",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "place_id": {"type": "string", "description": "Area to search"},
+                "type": {"type": "string", "description": "Filter: job, contract, grant, business_gap"}
+            },
+            "required": ["place_id"]
+        }
+    },
 ]
 
 
@@ -336,6 +371,101 @@ def list_national_workflows(category: str = None) -> dict:
     }
 
 
+def achieve_goal(goal_id: str, context: dict = None) -> dict:
+    from uk_boring.goals import get_goal
+    context = context or {}
+
+    goal = get_goal(goal_id)
+    if not goal:
+        return {"status": "not_found", "message": f"Goal '{goal_id}' not found"}
+
+    workflow_chain = []
+    for wf_id in goal.workflows:
+        step = {
+            "workflow_id": wf_id,
+            "depends_on": [],
+        }
+        if wf_id == "move_home":
+            step["description"] = "Notify all government bodies of address change"
+            step["execution_modes"] = ["api", "auth_browser", "handoff"]
+        elif wf_id == "letter_workflow":
+            step["description"] = "Parse letter, identify obligation, take action"
+            step["execution_modes"] = ["auth_browser", "user_handoff"]
+        elif wf_id == "find_provider":
+            step["description"] = "Search local providers for the service needed"
+            step["execution_modes"] = ["api"]
+        elif wf_id == "book_service":
+            step["description"] = "Book with selected provider"
+            step["execution_modes"] = ["api", "auth_browser", "handoff"]
+        elif wf_id == "search_contracts":
+            step["description"] = "Search Contracts Finder and local tenders"
+            step["execution_modes"] = ["api"]
+        elif wf_id == "match_capabilities":
+            step["description"] = "Match business capabilities to requirements"
+            step["execution_modes"] = ["api"]
+        elif wf_id == "monitor_changes":
+            step["description"] = "Check planning, licensing, and business changes"
+            step["execution_modes"] = ["api"]
+        elif wf_id == "value_item":
+            step["description"] = "Determine fair market value"
+            step["execution_modes"] = ["api"]
+        elif wf_id == "list_item":
+            step["description"] = "List on optimal sales platform"
+            step["execution_modes"] = ["api", "auth_browser"]
+        elif wf_id == "find_source":
+            step["description"] = "Find sources for the item"
+            step["execution_modes"] = ["api"]
+        elif wf_id == "verify_condition":
+            step["description"] = "Verify item condition and fairness"
+            step["execution_modes"] = ["api", "user_handoff"]
+        else:
+            step["description"] = f"Workflow: {wf_id}"
+            step["execution_modes"] = ["unknown"]
+        workflow_chain.append(step)
+
+    return {
+        "status": "ok",
+        "goal": {
+            "goal_id": goal.goal_id,
+            "name": goal.name,
+            "description": goal.description,
+            "category": goal.category,
+            "typical_duration": goal.typical_duration,
+        },
+        "workflow_chain": workflow_chain,
+        "expected_outcomes": goal.expected_outcomes,
+        "context_provided": list(context.keys()),
+    }
+
+
+def list_goals(outlet: str = None, place_id: str = None) -> dict:
+    from uk_boring.goals import list_goals as lg
+    goals = lg(outlet)
+    return {
+        "status": "ok",
+        "count": len(goals),
+        "goals": [
+            {
+                "goal_id": g.goal_id,
+                "name": g.name,
+                "description": g.description,
+                "category": g.category,
+                "typical_duration": g.typical_duration,
+            }
+            for g in goals
+        ],
+    }
+
+
+def get_opportunities(place_id: str, type: str = None) -> dict:
+    return {
+        "status": "ok",
+        "place_id": place_id,
+        "opportunities": [],
+        "note": "Opportunity scanning not yet wired to live data feeds. Use process_planning_signal / process_contract_signal to feed signals.",
+    }
+
+
 DISPATCH = {
     "resolve_place": resolve_place,
     "get_area_services": get_area_services,
@@ -348,6 +478,9 @@ DISPATCH = {
     "preflight": preflight,
     "verify_receipt": verify_receipt,
     "list_national_workflows": list_national_workflows,
+    "achieve_goal": achieve_goal,
+    "list_goals": list_goals,
+    "get_opportunities": get_opportunities,
 }
 
 
